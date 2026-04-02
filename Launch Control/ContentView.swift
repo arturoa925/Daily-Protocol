@@ -1,61 +1,42 @@
-//
-//  ContentView.swift
-//  Launch Control
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
-
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var currentScreen = 0
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
-        }
-    }
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                ProtocolView()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+                CalendarView()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                
+                CompletionContainerView()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
             }
+            .offset(y: -CGFloat(currentScreen) * geometry.size.height)
+            .animation(.easeInOut(duration: 0.3), value: currentScreen)
+            .simultaneousGesture(
+                DragGesture()
+                    .onEnded { value in
+                        let verticalAmount = value.translation.height
+                        let horizontalAmount = abs(value.translation.width)
+
+                        guard abs(verticalAmount) > 80, abs(verticalAmount) > horizontalAmount else { return }
+
+                        if verticalAmount < 0, currentScreen < 2 {
+                            currentScreen += 1
+                        } else if verticalAmount > 0, currentScreen > 0 {
+                            currentScreen -= 1
+                        }
+                    }
+            )
         }
+      
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
