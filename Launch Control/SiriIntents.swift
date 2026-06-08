@@ -4,13 +4,15 @@ import SwiftData
 import Foundation
 
 
-// Cached so repeated Siri/Shortcuts resolutions in the same process session
-// don't pay the cost of rebuilding the container each time.
-private enum IntentContainer {
-    static var shared: ModelContainer?
+// Actor-isolated container cache — safely callable from any async context,
+// including the nonisolated EntityQuery/EntityStringQuery protocol methods
+// that AppIntents invokes outside the main actor.
+private actor IntentContainer {
+    static let shared = IntentContainer()
+    private var container: ModelContainer?
 
-    static func get() throws -> ModelContainer {
-        if let existing = shared { return existing }
+    func get() throws -> ModelContainer {
+        if let existing = container { return existing }
         let schema = Schema([Event.self])
         let appGroupID = "group.AA.Launch-Control"
         let config: ModelConfiguration
@@ -19,14 +21,10 @@ private enum IntentContainer {
         } else {
             config = ModelConfiguration(schema: schema)
         }
-        let container = try ModelContainer(for: schema, configurations: [config])
-        shared = container
-        return container
+        let fresh = try ModelContainer(for: schema, configurations: [config])
+        container = fresh
+        return fresh
     }
-}
-
-private func makeContainer() throws -> ModelContainer {
-    try IntentContainer.get()
 }
 
 
@@ -40,7 +38,7 @@ struct AddTodayEventIntent: AppIntent {
     var eventTitle: String
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let container = try makeContainer()
+        let container = try await IntentContainer.shared.get()
         let context = ModelContext(container)
         let event = Event(title: eventTitle, date: Date())
         context.insert(event)
@@ -80,7 +78,7 @@ struct EventQuery: EntityQuery, EntityStringQuery {
     // Called by AppIntents to resolve entities by ID — used for both
    
     func entities(for identifiers: [UUID]) async throws -> [EventEntity] {
-        let context = ModelContext(try makeContainer())
+        let context = ModelContext(try await IntentContainer.shared.get())
         // Capture as local constant so #Predicate closes over a plain value
         let ids = identifiers
         let descriptor = FetchDescriptor<Event>(
@@ -93,7 +91,7 @@ struct EventQuery: EntityQuery, EntityStringQuery {
     }
 
     func suggestedEntities() async throws -> [EventEntity] {
-        let context = ModelContext(try makeContainer())
+        let context = ModelContext(try await IntentContainer.shared.get())
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: Date())
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
@@ -108,7 +106,7 @@ struct EventQuery: EntityQuery, EntityStringQuery {
     // Called when Siri/Shortcuts resolves a spoken or typed name to an entity.
     // Supports partial, case-insensitive matches so "meet" finds "Team Meeting".
     func entities(matching string: String) async throws -> [EventEntity] {
-        let context = ModelContext(try makeContainer())
+        let context = ModelContext(try await IntentContainer.shared.get())
         let all = try context.fetch(FetchDescriptor<Event>(
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         ))
@@ -132,7 +130,7 @@ struct MarkEventCompleteIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         // ModelContext is intentionally created fresh each call — it's lightweight.
         // The expensive ModelContainer is cached via IntentContainer.
-        let context = ModelContext(try makeContainer())
+        let context = ModelContext(try await IntentContainer.shared.get())
         let ids = [event.id]
         let descriptor = FetchDescriptor<Event>(
             predicate: #Predicate<Event> { ids.contains($0.eventID) }
@@ -157,7 +155,7 @@ struct TodaysEventsIntent: AppIntent {
     static var openAppWhenRun = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let context = ModelContext(try makeContainer())
+        let context = ModelContext(try await IntentContainer.shared.get())
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: Date())
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else {
