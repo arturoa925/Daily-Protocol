@@ -75,36 +75,40 @@ struct EventEntity: AppEntity {
 }
 
 struct EventQuery: EntityQuery, EntityStringQuery {
-    // Called by AppIntents to resolve entities by ID — used for both
-   
+
+    // One equality query per identifier with fetchLimit 1 — more reliable than
+    // array.contains in #Predicate, and SQLite short-circuits after the first match.
     func entities(for identifiers: [UUID]) async throws -> [EventEntity] {
         let context = ModelContext(try await IntentContainer.shared.get())
-        // Capture as local constant so #Predicate closes over a plain value
-        let ids = identifiers
-        let descriptor = FetchDescriptor<Event>(
-            predicate: #Predicate<Event> { event in
-                ids.contains(event.eventID)
+        return try identifiers.compactMap { uuid in
+            var descriptor = FetchDescriptor<Event>(
+                predicate: #Predicate<Event> { $0.eventID == uuid }
+            )
+            descriptor.fetchLimit = 1
+            return try context.fetch(descriptor).first.map {
+                EventEntity(id: $0.eventID, title: $0.title, date: $0.date, isCompleted: $0.isCompleted)
             }
-        )
-        return try context.fetch(descriptor)
-            .map { EventEntity(id: $0.eventID, title: $0.title, date: $0.date, isCompleted: $0.isCompleted) }
+        }
     }
 
+    // Siri shows ~6 items in the picker — cap at 10 so we don't over-fetch.
     func suggestedEntities() async throws -> [EventEntity] {
         let context = ModelContext(try await IntentContainer.shared.get())
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: Date())
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
-        let descriptor = FetchDescriptor<Event>(
+        var descriptor = FetchDescriptor<Event>(
             predicate: #Predicate { $0.date >= start && $0.date < end && !$0.isCompleted },
             sortBy: [SortDescriptor(\.date)]
         )
+        descriptor.fetchLimit = 10
         let events = try context.fetch(descriptor)
         return events.map { EventEntity(id: $0.eventID, title: $0.title, date: $0.date, isCompleted: $0.isCompleted) }
     }
 
-    // Called when Siri/Shortcuts resolves a spoken or typed name to an entity.
-    // Supports partial, case-insensitive matches so "meet" finds "Team Meeting".
+    // In-memory string filter — SwiftData predicates don't support case-insensitive
+    // contains reliably, so we fetch sorted and filter in Swift. Cap output at 20
+    // so Siri's disambiguation list stays usable.
     func entities(matching string: String) async throws -> [EventEntity] {
         let context = ModelContext(try await IntentContainer.shared.get())
         let all = try context.fetch(FetchDescriptor<Event>(
@@ -113,6 +117,7 @@ struct EventQuery: EntityQuery, EntityStringQuery {
         let query = string.lowercased()
         return all
             .filter { $0.title.lowercased().contains(query) }
+            .prefix(20)
             .map { EventEntity(id: $0.eventID, title: $0.title, date: $0.date, isCompleted: $0.isCompleted) }
     }
 }
