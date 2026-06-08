@@ -11,6 +11,7 @@ import SwiftData
 
 @Model
 final class Event {
+    var eventID: UUID
     var title: String
     var date: Date
     var time: Date?
@@ -22,6 +23,7 @@ final class Event {
     var createdAt: Date
 
     init(
+        eventID: UUID = UUID(),
         title: String,
         date: Date,
         time: Date? = nil,
@@ -32,6 +34,7 @@ final class Event {
         reminderDate: Date? = nil,
         createdAt: Date = Date()
     ) {
+        self.eventID = eventID
         self.title = title
         self.date = date
         self.time = time
