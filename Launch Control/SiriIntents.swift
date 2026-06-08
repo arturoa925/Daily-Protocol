@@ -154,6 +154,32 @@ struct MarkEventCompleteIntent: AppIntent {
 
 
 
+struct RemoveTodayEventIntent: AppIntent {
+    static var title: LocalizedStringResource = "Remove Event"
+    static var description = IntentDescription("Delete an event from Launch Control")
+    static var openAppWhenRun = false
+
+    @Parameter(title: "Event", requestValueDialog: "Which event do you want to remove?")
+    var event: EventEntity
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let context = ModelContext(try await IntentContainer.shared.get())
+        var descriptor = FetchDescriptor<Event>(
+            predicate: #Predicate<Event> { $0.eventID == event.id }
+        )
+        descriptor.fetchLimit = 1
+        guard let match = try context.fetch(descriptor).first else {
+            throw $event.needsValueError("That event wasn't found.")
+        }
+        let title = match.title
+        context.delete(match)
+        try context.save()
+        return .result(dialog: "Removed \"\(title)\" from Launch Control.")
+    }
+}
+
+
+
 struct TodaysEventsIntent: AppIntent {
     static var title: LocalizedStringResource = "Today's Events"
     static var description = IntentDescription("List all events scheduled for today in Launch Control")
@@ -240,6 +266,16 @@ struct LaunchControlShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Complete Event",
             systemImageName: "checkmark.circle"
+        )
+        AppShortcut(
+            intent: RemoveTodayEventIntent(),
+            phrases: [
+                "Remove event in \(.applicationName)",
+                "Delete event in \(.applicationName)",
+                "Remove \(\.$event) in \(.applicationName)"
+            ],
+            shortTitle: "Remove Event",
+            systemImageName: "trash"
         )
         AppShortcut(
             intent: TodaysEventsIntent(),
