@@ -152,7 +152,7 @@ struct CalendarView: View {
                         modelContext.insert(newEvent)
 
                         if let reminder {
-                            NotificationScheduler.scheduleNotification(for: String(describing: newEvent.persistentModelID), title: trimmedTitle, reminderDate: reminder) { error in
+                            NotificationScheduler.scheduleNotification(for: newEvent.eventID.uuidString, title: trimmedTitle, reminderDate: reminder) { error in
                                 if let error {
                                     DispatchQueue.main.async {
                                         notificationErrorMessage = error.localizedDescription
@@ -427,7 +427,7 @@ struct CalendarView: View {
 
     private func deleteEvent(_ event: Event) {
         if let reminderDate = event.reminderDate, reminderDate > Date() {
-            let identifier = String(describing: event.persistentModelID)
+            let identifier = event.eventID.uuidString
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
         }
         modelContext.delete(event)

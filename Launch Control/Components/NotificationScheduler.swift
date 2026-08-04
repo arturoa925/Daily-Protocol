@@ -9,6 +9,24 @@ import Foundation
 import UserNotifications
 
 enum NotificationScheduler {
+    static let categoryIdentifier = "EVENT_REMINDER"
+    static let markCompleteActionIdentifier = "MARK_COMPLETE_ACTION"
+
+    static func registerCategories() {
+        let markCompleteAction = UNNotificationAction(
+            identifier: markCompleteActionIdentifier,
+            title: "Mark Complete",
+            options: []
+        )
+        let category = UNNotificationCategory(
+            identifier: categoryIdentifier,
+            actions: [markCompleteAction],
+            intentIdentifiers: [],
+            options: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+
     static func scheduleNotification(for eventID: String, title: String, reminderDate: Date, completion: @escaping (Error?) -> Void) {
         let center = UNUserNotificationCenter.current()
 
@@ -28,6 +46,7 @@ enum NotificationScheduler {
             content.title = title
             content.body = "Reminder from Launch Control"
             content.sound = .default
+            content.categoryIdentifier = categoryIdentifier
 
             let triggerDate = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: reminderDate)
             // when to send notif

@@ -7,15 +7,25 @@
 
 import SwiftUI
 import SwiftData
+import UserNotifications
 import os
 
 @main
 struct Launch_ControlApp: App {
     @AppStorage("appAppearance") private var appearanceRaw: String = AppearanceMode.system.rawValue
 
-    var sharedModelContainer: ModelContainer = Self.makeModelContainer()
+    var sharedModelContainer: ModelContainer
+    private let notificationDelegate: EventNotificationDelegate
 
     private static let logger = Logger(subsystem: "AA.Launch-Control", category: "Persistence")
+
+    init() {
+        let container = Self.makeModelContainer()
+        sharedModelContainer = container
+        notificationDelegate = EventNotificationDelegate(modelContainer: container)
+        UNUserNotificationCenter.current().delegate = notificationDelegate
+        NotificationScheduler.registerCategories()
+    }
 
     private static func makeModelContainer() -> ModelContainer {
         let schema = Schema([Event.self])

@@ -275,7 +275,7 @@ struct ProtocolView: View {
 
         if let reminder {
             NotificationScheduler.scheduleNotification(
-                for: String(describing: newEvent.persistentModelID),
+                for: newEvent.eventID.uuidString,
                 title: trimmedTitle,
                 reminderDate: reminder
             ) { error in
@@ -344,7 +344,7 @@ struct ProtocolView: View {
 
     private func deleteEvent(_ event: Event) {
         if let reminderDate = event.reminderDate, reminderDate > Date() {
-            let identifier = String(describing: event.persistentModelID)
+            let identifier = event.eventID.uuidString
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
         }
 
