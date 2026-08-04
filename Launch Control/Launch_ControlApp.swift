@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct Launch_ControlApp: App {
+    @AppStorage("appAppearance") private var appearanceRaw: String = AppearanceMode.system.rawValue
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([Event.self])
         let appGroupID = "group.AA.Launch-Control"
@@ -29,6 +31,7 @@ struct Launch_ControlApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme((AppearanceMode(rawValue: appearanceRaw) ?? .system).colorScheme)
         }
         .modelContainer(sharedModelContainer)
     }

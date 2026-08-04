@@ -62,7 +62,7 @@ struct CalendarView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            Color(hex: 0x2C2A2A)
+            Color.appBackground
                 .ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 16) {
@@ -80,13 +80,13 @@ struct CalendarView: View {
                     .accessibilityHint("Select a day to view events")
                     .accessibilitySortPriority(3)
                 }
-                .background(Color.white)
+                .background(Color.appSurface)
                 .cornerRadius(16)
                 .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
 
                 Text(formattedSelectedDate)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.textPrimary)
                     .padding(.top, 4)
                     .accessibilityAddTraits(.isHeader)
                     .accessibilityLabel(selectedDateAccessibilityLabel)
@@ -96,7 +96,7 @@ struct CalendarView: View {
                 if eventsForSelectedDate.isEmpty {
                     Text("No events on this day. Tap + to add one.")
                         .font(.body)
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Color.textPrimary.opacity(0.8))
                         .padding(.top, 8)
                         .accessibilityLabel("No events on this day")
                         .accessibilityValue(selectedDateAccessibilityLabel)
@@ -262,8 +262,8 @@ struct CalendarView: View {
         VStack(spacing: 1) {
             Text(eventTitle(for: event))
                 .font(.body)
-                .foregroundStyle(.white)
-                .strikethrough(event.isCompleted, color: .white)
+                .foregroundStyle(Color.textPrimary)
+                .strikethrough(event.isCompleted, color: Color.textPrimary)
                 .opacity(event.isCompleted ? 0.7 : 1.0)
                 .animation(.easeInOut(duration: 0.22), value: event.isCompleted)
 
@@ -278,7 +278,7 @@ struct CalendarView: View {
             if !event.category.isEmpty {
                 Text(event.category)
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Color.textPrimary.opacity(0.7))
                     .opacity(event.isCompleted ? 0.55 : 1.0)
                     .animation(.easeInOut(duration: 0.22), value: event.isCompleted)
                     .padding(.top, -2)
@@ -293,7 +293,7 @@ struct CalendarView: View {
                 NotesIndicator(
                     size: 4,
                     spacing: 4,
-                    tint: .white.opacity(0.6)
+                    tint: Color.textPrimary.opacity(0.6)
                 )
                 .accessibilityHidden(true)
             }
@@ -303,11 +303,11 @@ struct CalendarView: View {
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Color.textPrimary.opacity(0.72))
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.08))
+                            .fill(Color.textPrimary.opacity(0.08))
                     )
             }
             .buttonStyle(.plain)

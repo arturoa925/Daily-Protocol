@@ -27,6 +27,7 @@ struct ProtocolView: View {
     @State private var showCategorySheet = false
     @State private var categoryDraft = ""
     @State private var eventPendingDeletion: Event?
+    @State private var showSettings = false
 
     private let categories = ["Work", "Health", "Education", "Personal", "Social"]
     @State private var swipedEventID: PersistentIdentifier?
@@ -49,13 +50,30 @@ struct ProtocolView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            Color(hex: 0x2C2A2A)
-                .ignoresSafeArea()
+        NavigationStack {
+            ZStack(alignment: .bottomTrailing) {
+                Color.appBackground
+                    .ignoresSafeArea()
 
-            protocolContent
+                protocolContent
 
-            addEventButton
+                addEventButton
+            }
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                    .accessibilityHint("Opens app settings, including appearance.")
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
+            }
         }
     }
 
@@ -64,7 +82,7 @@ struct ProtocolView: View {
             Text("Today is \(formattedToday)")
                 .font(.title2)
                 .padding(.top, 16)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.textPrimary)
                 .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityAddTraits(.isHeader)
@@ -73,14 +91,14 @@ struct ProtocolView: View {
 
             Text("What are we getting done today?")
                 .font(.body)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityHint("This screen shows your protocol items for today.")
                 .accessibilitySortPriority(2)
 
             Text("Events for Today")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.textPrimary)
                 .padding(.top, 96)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityLabel("Events for today")
@@ -101,7 +119,7 @@ struct ProtocolView: View {
     private var emptyStateView: some View {
         Text("No events yet. Tap the plus button to add your first event.")
             .font(.body)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.textPrimary)
             .multilineTextAlignment(.center)
             .padding(.top, 12)
             .accessibilityLabel("No events for today. Use the add event button to create your first event.")
@@ -385,8 +403,8 @@ private struct ProtocolEventRowView: View {
         VStack(spacing: 2) {
             Text(titleText)
                 .font(.body)
-                .foregroundColor(.white)
-                .strikethrough(event.isCompleted, color: .white)
+                .foregroundColor(Color.textPrimary)
+                .strikethrough(event.isCompleted, color: Color.textPrimary)
                 .opacity(event.isCompleted ? 0.7 : 1.0)
                 .animation(.easeInOut(duration: 0.22), value: event.isCompleted)
 
@@ -394,7 +412,7 @@ private struct ProtocolEventRowView: View {
             if !event.category.isEmpty {
                 Text(event.category)
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Color.textPrimary.opacity(0.7))
                     .opacity(event.isCompleted ? 0.55 : 1.0)
                     .animation(.easeInOut(duration: 0.22), value: event.isCompleted)
             }
@@ -407,7 +425,7 @@ private struct ProtocolEventRowView: View {
                 NotesIndicator(
                     size: 4,
                     spacing: 4,
-                    tint: .white.opacity(0.6)
+                    tint: Color.textPrimary.opacity(0.6)
                 )
                 .accessibilityHidden(true)
             }
@@ -415,11 +433,11 @@ private struct ProtocolEventRowView: View {
             Button(action: onDelete) {
                 Image(systemName: "trash")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Color.textPrimary.opacity(0.72))
                     .frame(width: 28, height: 28)
                     .background(
                         Circle()
-                            .fill(Color.white.opacity(0.08))
+                            .fill(Color.textPrimary.opacity(0.08))
                     )
             }
             .buttonStyle(.plain)

@@ -65,7 +65,7 @@ struct MonthlyCompletionView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            Color(hex: 0x2C2A2A)
+            Color.appBackground
             .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
@@ -88,7 +88,7 @@ struct MonthlyCompletionView: View {
             } label: {
                 Image(systemName: "chart.bar.xaxis")
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.textPrimary)
                     .frame(width: 64, height: 64)
                     .background(
                         ZStack {
@@ -99,8 +99,8 @@ struct MonthlyCompletionView: View {
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.20),
-                                            Color.white.opacity(0.04)
+                                            Color.textPrimary.opacity(0.20),
+                                            Color.textPrimary.opacity(0.04)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -108,7 +108,7 @@ struct MonthlyCompletionView: View {
                                 )
 
                             Circle()
-                                .fill(Color.white.opacity(0.03))
+                                .fill(Color.textPrimary.opacity(0.03))
                         }
                     )
                     .overlay(
@@ -116,8 +116,8 @@ struct MonthlyCompletionView: View {
                             .stroke(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.35),
-                                        Color.white.opacity(0.08)
+                                        Color.textPrimary.opacity(0.35),
+                                        Color.textPrimary.opacity(0.08)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -130,8 +130,8 @@ struct MonthlyCompletionView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.32),
-                                        Color.white.opacity(0.02)
+                                        Color.textPrimary.opacity(0.32),
+                                        Color.textPrimary.opacity(0.02)
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -143,7 +143,7 @@ struct MonthlyCompletionView: View {
                                     .padding(4)
                             )
                     )
-                    .shadow(color: .white.opacity(0.08), radius: 2, x: 0, y: -1)
+                    .shadow(color: Color.textPrimary.opacity(0.08), radius: 2, x: 0, y: -1)
                     .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 4)
                     .scaleEffect(isPressingWeekButton ? 0.94 : 1.0)
                     .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isPressingWeekButton)
@@ -175,15 +175,15 @@ struct MonthlyCompletionView: View {
         VStack(spacing: 10) {
             Text("Progress Over 4 Weeks")
                 .font(.title2)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.textPrimary)
 
             Text("Last 4 weeks")
                 .font(.headline)
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(Color.textPrimary.opacity(0.9))
 
             Text("Total Events : \(totalEventsAcrossFourWeeks)")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundStyle(Color.textPrimary.opacity(0.82))
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
@@ -213,7 +213,7 @@ struct MonthlyCompletionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(selectedWeekHeaderText)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilitySortPriority(2)
@@ -222,7 +222,7 @@ struct MonthlyCompletionView: View {
             if selectedSummary.events.isEmpty {
                 Text("No events created during this week.")
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Color.textPrimary.opacity(0.72))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityLabel("No events created during this week")
                     .accessibilityHint("Try selecting another week to review activity.")
@@ -279,16 +279,16 @@ private struct MonthlyBarChartView: View {
     private let barSpacing: CGFloat = 22
     private let dotSize: CGFloat = 6
     private let dotVerticalOffset: CGFloat = 8
-    private let barOutlineColor = Color.white.opacity(0.10)
+    private let barOutlineColor = Color.textPrimary.opacity(0.10)
     private let barFillGradient = LinearGradient(
         colors: [
-            Color(red: 29/255, green: 55/255, blue: 114/255),
-            Color(red: 56/255, green: 104/255, blue: 216/255)
+            Color.chartBarBottom,
+            Color.chartBarTop
         ],
         startPoint: .bottom,
         endPoint: .top
     )
-    private let accentLineColor = Color(red: 0.33, green: 0.9, blue: 0.95)
+    private let accentLineColor = Color.chartAccentLine
 
     private var maxTotalCount: Int {
         max(summaries.map(\.totalCount).max() ?? 0, 1)
@@ -400,7 +400,7 @@ private struct MonthlyBarChartView: View {
                                         Text(weekEndLabel(for: summary.date))
                                     }
                                     .font(.caption2)
-                                    .foregroundStyle(isSelected ? .white : .white.opacity(0.68))
+                                    .foregroundStyle(isSelected ? Color.textPrimary : Color.textPrimary.opacity(0.68))
                                     .multilineTextAlignment(.center)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.75)
@@ -579,8 +579,8 @@ private struct MonthlySelectedEventRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(event.title) — \(event.date.formatted(.dateTime.month(.abbreviated).day()))")
                     .font(.subheadline)
-                    .foregroundStyle(.white)
-                    .strikethrough(event.isCompleted, color: .white)
+                    .foregroundStyle(Color.textPrimary)
+                    .strikethrough(event.isCompleted, color: Color.textPrimary)
                     .opacity(event.isCompleted ? 0.72 : 1.0)
                     .accessibilityHidden(true)
             }

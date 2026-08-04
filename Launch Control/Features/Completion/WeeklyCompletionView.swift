@@ -70,7 +70,7 @@ struct WeeklyCompletionView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            Color(hex: 0x2C2A2A)
+            Color.appBackground
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
@@ -96,7 +96,7 @@ struct WeeklyCompletionView: View {
             } label: {
                 Image(systemName: "calendar")
                     .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.textPrimary)
                     .frame(width: 64, height: 64)
                     .background(
                         ZStack {
@@ -107,8 +107,8 @@ struct WeeklyCompletionView: View {
                                 .fill(
                                     LinearGradient(
                                         colors: [
-                                            Color.white.opacity(0.20),
-                                            Color.white.opacity(0.04)
+                                            Color.textPrimary.opacity(0.20),
+                                            Color.textPrimary.opacity(0.04)
                                         ],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
@@ -116,7 +116,7 @@ struct WeeklyCompletionView: View {
                                 )
 
                             Circle()
-                                .fill(Color.white.opacity(0.03))
+                                .fill(Color.textPrimary.opacity(0.03))
                         }
                     )
                     .overlay(
@@ -124,8 +124,8 @@ struct WeeklyCompletionView: View {
                             .stroke(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.35),
-                                        Color.white.opacity(0.08)
+                                        Color.textPrimary.opacity(0.35),
+                                        Color.textPrimary.opacity(0.08)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -138,8 +138,8 @@ struct WeeklyCompletionView: View {
                             .fill(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.32),
-                                        Color.white.opacity(0.02)
+                                        Color.textPrimary.opacity(0.32),
+                                        Color.textPrimary.opacity(0.02)
                                     ],
                                     startPoint: .top,
                                     endPoint: .bottom
@@ -151,7 +151,7 @@ struct WeeklyCompletionView: View {
                                     .padding(4)
                             )
                     )
-                    .shadow(color: .white.opacity(0.08), radius: 2, x: 0, y: -1)
+                    .shadow(color: Color.textPrimary.opacity(0.08), radius: 2, x: 0, y: -1)
                     .shadow(color: .black.opacity(0.18), radius: 10, x: 0, y: 4)
                     .scaleEffect(isPressingCalendarButton ? 0.94 : 1.0)
                     .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isPressingCalendarButton)
@@ -184,17 +184,17 @@ struct WeeklyCompletionView: View {
         VStack(spacing: 10) {
             Text("Progress this Week")
                 .font(.title2)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.textPrimary)
                 .accessibilityAddTraits(.isHeader)
 
             Text(weekRangeText)
                 .font(.headline)
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(Color.textPrimary.opacity(0.9))
                 .accessibilityLabel("\(weekRangeText)")
 
             Text("Total Events : \(totalEventsThisWeek)")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.82))
+                .foregroundStyle(Color.textPrimary.opacity(0.82))
                 .accessibilityLabel("Total events this week: \(totalEventsThisWeek)")
         }
         .frame(maxWidth: .infinity)
@@ -225,7 +225,7 @@ struct WeeklyCompletionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(selectedDayHeaderText)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityLabel(selectedDayAccessibilityLabel)
@@ -235,7 +235,7 @@ struct WeeklyCompletionView: View {
             if selectedSummary.events.isEmpty {
                 Text("No events created for this day.")
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Color.textPrimary.opacity(0.72))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityLabel("No events created for the selected day.")
                     .accessibilityHint("Try selecting another day to review activity.")
@@ -256,7 +256,7 @@ struct WeeklyCompletionView: View {
     private var remainingEventsSection: some View {
         Text("Remaining Events : \(remainingEventsThisWeek)")
             .font(.title3)
-            .foregroundStyle(.white)
+            .foregroundStyle(Color.textPrimary)
             .frame(maxWidth: .infinity, alignment: .center)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Remaining events this week")
@@ -316,16 +316,16 @@ private struct WeeklyBarChartView: View {
     private let barSpacing: CGFloat = 14
     private let dotSize: CGFloat = 6
     private let dotVerticalOffset: CGFloat = 8
-    private let barOutlineColor = Color.white.opacity(0.10)
+    private let barOutlineColor = Color.textPrimary.opacity(0.10)
     private let barFillGradient = LinearGradient(
         colors: [
-            Color(hex: 0x1D3772),
-            Color(hex: 0x3868D8)
+            Color.chartBarBottom,
+            Color.chartBarTop
         ],
         startPoint: .bottom,
         endPoint: .top
     )
-    private let accentLineColor = Color(hex: 0x3FD2F3)
+    private let accentLineColor = Color.chartAccentLine
 
     private var chartAccessibilityLabel: String {
         "Weekly completion chart"
@@ -423,7 +423,7 @@ private struct WeeklyBarChartView: View {
 
                                     Text(summary.date.formatted(.dateTime.weekday(.narrow)))
                                         .font(.caption2)
-                                        .foregroundStyle(isSelected ? .white : .white.opacity(0.65))
+                                        .foregroundStyle(isSelected ? Color.textPrimary : Color.textPrimary.opacity(0.65))
                                 }
                                 .frame(width: barWidth)
                                 .frame(maxHeight: .infinity, alignment: .bottom)
@@ -587,8 +587,8 @@ private struct SelectedEventRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("\(event.title) — \(event.date.formatted(.dateTime.month(.abbreviated).day()))")
                     .font(.subheadline)
-                    .foregroundStyle(.white)
-                    .strikethrough(event.isCompleted, color: .white)
+                    .foregroundStyle(Color.textPrimary)
+                    .strikethrough(event.isCompleted, color: Color.textPrimary)
                     .opacity(event.isCompleted ? 0.72 : 1.0)
                     .accessibilityHidden(true)
             }

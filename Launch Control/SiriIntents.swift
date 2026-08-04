@@ -164,8 +164,9 @@ struct RemoveTodayEventIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let context = ModelContext(try await IntentContainer.shared.get())
+        let eventID = event.id
         var descriptor = FetchDescriptor<Event>(
-            predicate: #Predicate<Event> { $0.eventID == event.id }
+            predicate: #Predicate<Event> { $0.eventID == eventID }
         )
         descriptor.fetchLimit = 1
         guard let match = try context.fetch(descriptor).first else {
