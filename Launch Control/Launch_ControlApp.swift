@@ -7,12 +7,17 @@
 
 import SwiftUI
 import SwiftData
+import os
 
 @main
 struct Launch_ControlApp: App {
     @AppStorage("appAppearance") private var appearanceRaw: String = AppearanceMode.system.rawValue
 
-    var sharedModelContainer: ModelContainer = {
+    var sharedModelContainer: ModelContainer = Self.makeModelContainer()
+
+    private static let logger = Logger(subsystem: "AA.Launch-Control", category: "Persistence")
+
+    private static func makeModelContainer() -> ModelContainer {
         let schema = Schema([Event.self])
         let appGroupID = "group.AA.Launch-Control"
         let config: ModelConfiguration
@@ -21,12 +26,33 @@ struct Launch_ControlApp: App {
         } else {
             config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         }
-        do {
-            return try ModelContainer(for: schema, configurations: [config])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+
+        if let container = try? ModelContainer(for: schema, configurations: [config]) {
+            return container
         }
-    }()
+
+        logger.error("ModelContainer failed to load; attempting recovery by clearing the on-disk store.")
+        removeStoreFiles(for: config)
+
+        if let container = try? ModelContainer(for: schema, configurations: [config]) {
+            return container
+        }
+
+        logger.fault("ModelContainer recovery failed; falling back to an in-memory store for this session.")
+        let fallbackConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        guard let fallbackContainer = try? ModelContainer(for: schema, configurations: [fallbackConfig]) else {
+            fatalError("Could not create even an in-memory ModelContainer.")
+        }
+        return fallbackContainer
+    }
+
+    private static func removeStoreFiles(for config: ModelConfiguration) {
+        let fileManager = FileManager.default
+        for suffix in ["", "-wal", "-shm"] {
+            let fileURL = URL(fileURLWithPath: config.url.path + suffix)
+            try? fileManager.removeItem(at: fileURL)
+        }
+    }
 
     var body: some Scene {
         WindowGroup {

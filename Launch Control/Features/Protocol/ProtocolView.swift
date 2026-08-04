@@ -49,6 +49,10 @@ struct ProtocolView: View {
         Date.now.formatted(.dateTime.weekday(.abbreviated).day().month(.wide))
     }
 
+    private var currentStreak: Int {
+        StreakCalculator.currentStreak(events: events)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
@@ -83,13 +87,18 @@ struct ProtocolView: View {
                 .font(.title2)
                 .padding(.top, 16)
                 .foregroundStyle(Color.textPrimary)
-                .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityLabel("Today is \(formattedToday)")
                 .accessibilitySortPriority(3)
 
+            if currentStreak > 0 {
+                streakBadge
+                    .padding(.top, 6)
+            }
+
             Text("What are we getting done today?")
+                .padding(.top, 16)
                 .font(.body)
                 .foregroundStyle(Color.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -114,6 +123,14 @@ struct ProtocolView: View {
             Spacer()
         }
         .padding()
+    }
+
+    private var streakBadge: some View {
+        Text("\u{1F525} \(currentStreak) day\(currentStreak == 1 ? "" : "s") streak")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.textPrimary.opacity(0.85))
+            .accessibilityLabel("Current streak")
+            .accessibilityValue("\(currentStreak) day\(currentStreak == 1 ? "" : "s")")
     }
 
     private var emptyStateView: some View {

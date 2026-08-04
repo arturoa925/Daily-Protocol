@@ -61,6 +61,10 @@ struct WeeklyCompletionView: View {
         max(totalEventsThisWeek - completedEventsThisWeek, 0)
     }
 
+    private var currentStreak: Int {
+        StreakCalculator.currentStreak(events: events)
+    }
+
     private var selectedSummary: WeekDaySummary {
         selectedDay
             ?? weeklySummaries.first(where: { calendar.isDate($0.date, inSameDayAs: Date()) })
@@ -196,11 +200,17 @@ struct WeeklyCompletionView: View {
                 .font(.subheadline)
                 .foregroundStyle(Color.textPrimary.opacity(0.82))
                 .accessibilityLabel("Total events this week: \(totalEventsThisWeek)")
+
+            if currentStreak > 0 {
+                Text("\u{1F525} \(currentStreak) day\(currentStreak == 1 ? "" : "s") streak")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.textPrimary.opacity(0.85))
+            }
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Progress this week")
-        .accessibilityValue("\(weekRangeText). Total events \(totalEventsThisWeek). Completed events \(completedEventsThisWeek). Remaining events \(remainingEventsThisWeek).")
+        .accessibilityValue("\(weekRangeText). Total events \(totalEventsThisWeek). Completed events \(completedEventsThisWeek). Remaining events \(remainingEventsThisWeek). Current streak \(currentStreak) day\(currentStreak == 1 ? "" : "s").")
         .accessibilityAddTraits(.isHeader)
     }
 
