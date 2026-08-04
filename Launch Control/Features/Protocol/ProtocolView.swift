@@ -456,6 +456,8 @@ private struct ProtocolEventRowView: View {
                         Circle()
                             .fill(Color.textPrimary.opacity(0.08))
                     )
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Delete \(event.title)")

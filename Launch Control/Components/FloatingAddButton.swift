@@ -43,6 +43,7 @@ struct FloatingAddButton: View {
                 .scaleEffect(1.0)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Add event")
     }
 }
 
