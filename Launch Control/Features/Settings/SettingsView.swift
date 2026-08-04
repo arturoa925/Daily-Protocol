@@ -7,6 +7,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("appAppearance") private var appearanceRaw: String = AppearanceMode.system.rawValue
+    // used to dismiss the sheet
     @Environment(\.dismiss) private var dismiss
 
     private var appearance: Binding<AppearanceMode> {
