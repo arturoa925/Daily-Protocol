@@ -26,19 +26,13 @@ struct WeeklyCompletionView: View {
     private let calendar = Calendar.current
 
     private var weekDays: [Date] {
-        guard let firstDay = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) else {
-            return []
-        }
-
-        return (0..<7).compactMap { offset in
-            calendar.date(byAdding: .day, value: offset, to: firstDay)
-        }
+        CompletionCalculator.weekDays(calendar: calendar)
     }
 
     private var weeklySummaries: [WeekDaySummary] {
         weekDays.map { day in
             let dayEvents = eventsForDay(day)
-            let completedCount = dayEvents.filter { $0.isCompleted }.count
+            let completedCount = CompletionCalculator.completedCount(dayEvents)
 
             return WeekDaySummary(
                 date: day,
@@ -306,9 +300,7 @@ struct WeeklyCompletionView: View {
     }
 
     private func eventsForDay(_ day: Date) -> [Event] {
-        events.filter { event in
-            calendar.isDate(event.date, inSameDayAs: day)
-        }
+        CompletionCalculator.events(events, onDay: day, calendar: calendar)
     }
 }
 

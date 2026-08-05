@@ -19,32 +19,18 @@ struct MonthlyCompletionView: View {
     private let calendar = Calendar.current
 
     private var lastFourWeekStarts: [Date] {
-        guard let currentWeekStart = calendar.date(
-            from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
-        ) else {
-            return []
-        }
-
-        return (0..<4).compactMap { offset in
-            calendar.date(byAdding: .weekOfYear, value: -(3 - offset), to: currentWeekStart)
-        }
+        CompletionCalculator.lastFourWeekStarts(calendar: calendar)
     }
 
     private var weeklySummaries: [MonthWeekSummary] {
         lastFourWeekStarts.map { weekStart in
-            guard let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart) else {
-                return MonthWeekSummary(date: weekStart, events: [], totalCount: 0, completedCount: 0)
-            }
-
-            let weekEvents = events.filter { event in
-                event.date >= weekStart && event.date < weekEnd
-            }
+            let weekEvents = CompletionCalculator.events(events, inWeekStartingAt: weekStart, calendar: calendar)
 
             return MonthWeekSummary(
                 date: weekStart,
                 events: weekEvents,
                 totalCount: weekEvents.count,
-                completedCount: weekEvents.filter(\.isCompleted).count
+                completedCount: CompletionCalculator.completedCount(weekEvents)
             )
         }
     }
