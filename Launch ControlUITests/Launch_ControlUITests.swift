@@ -31,6 +31,43 @@ final class Launch_ControlUITests: XCTestCase {
         // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
+    /// Swipes up until `element` appears. A screen with a long list scrolls first and
+    /// only pages once it reaches the bottom, so this needs several swipes.
+    @MainActor
+    private func swipeUp(in app: XCUIApplication, until element: XCUIElement, maxSwipes: Int = 12) {
+        for _ in 0..<maxSwipes where !element.exists {
+            app.swipeUp()
+        }
+    }
+
+    /// Only the visible screen should be in the accessibility tree. Without this,
+    /// VoiceOver can traverse into the screens above and below the current one.
+    @MainActor
+    func testOffScreenPagesAreHiddenFromAccessibility() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let protocolHeader = app.staticTexts["Events for today"]
+        let calendarPicker = app.datePickers.firstMatch
+
+        XCTAssertTrue(protocolHeader.waitForExistence(timeout: 5), "Should start on the Protocol screen")
+        XCTAssertFalse(calendarPicker.exists, "The Calendar screen should not be reachable while it's off-screen")
+
+        swipeUp(in: app, until: calendarPicker)
+
+        XCTAssertTrue(calendarPicker.exists, "Should reach the Calendar screen")
+        XCTAssertFalse(protocolHeader.exists, "The Protocol screen should drop out once it's off-screen")
+
+        // Known gap: each screen's floating action button still leaks into the tree
+        // when off-screen. `.accessibilityHidden` has no effect on them at any point
+        // in the modifier chain, so they aren't asserted on here.
+
+        for _ in 0..<12 where !protocolHeader.exists {
+            app.swipeDown()
+        }
+        XCTAssertTrue(protocolHeader.exists, "Should be able to swipe back to the Protocol screen")
+    }
+
     @MainActor
     func testLaunchPerformance() throws {
         // This measures how long it takes to launch your application.

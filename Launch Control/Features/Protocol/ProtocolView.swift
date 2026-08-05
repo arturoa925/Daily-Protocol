@@ -28,6 +28,7 @@ struct ProtocolView: View {
     @State private var categoryDraft = ""
     @State private var eventPendingDeletion: Event?
     @State private var showSettings = false
+    @Environment(\.isActiveScreen) private var isActiveScreen
 
     private let categories = ["Work", "Health", "Education", "Personal", "Social"]
     @State private var swipedEventID: PersistentIdentifier?
@@ -80,6 +81,9 @@ struct ProtocolView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
+            // The NavigationStack hosts this content outside ContentView's
+            // accessibility scope, so the hidden state has to be applied in here.
+            .accessibilityHidden(!isActiveScreen)
         }
     }
 

@@ -25,6 +25,7 @@ struct CalendarView: View {
     @State private var notificationErrorMessage: String?
 
     @State private var swipedEventID: PersistentIdentifier?
+    @Environment(\.isActiveScreen) private var isActiveScreen
 
     @State private var showNotesSheet = false
     @State private var showCategorySheet = false
@@ -218,6 +219,9 @@ struct CalendarView: View {
                 Text(notificationErrorMessage ?? "")
             }
         }
+        // Applied here as well as in ContentView: the floating button's sheet and
+        // gesture modifiers host it outside the parent's accessibility scope.
+        .accessibilityHidden(!isActiveScreen)
     }
 
     @ViewBuilder

@@ -5,6 +5,22 @@
 
 import SwiftUI
 
+/// Whether the screen a view belongs to is the one currently on display.
+///
+/// `ContentView` hides off-screen pages from accessibility directly, but that doesn't
+/// reach through a `NavigationStack` — its hosting container sits outside the parent's
+/// accessibility scope — so screens that use one read this and hide themselves.
+private struct IsActiveScreenKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var isActiveScreen: Bool {
+        get { self[IsActiveScreenKey.self] }
+        set { self[IsActiveScreenKey.self] = newValue }
+    }
+}
+
 /// Whether a screen's scroll view is sitting at its top or bottom edge.
 ///
 /// Both default to `true` so a screen whose content is shorter than the viewport —

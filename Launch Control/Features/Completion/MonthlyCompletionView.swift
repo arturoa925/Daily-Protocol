@@ -15,6 +15,7 @@ struct MonthlyCompletionView: View {
 
     @State private var selectedWeek: MonthWeekSummary?
     @State private var isPressingWeekButton = false
+    @Environment(\.isActiveScreen) private var isActiveScreen
 
     private let calendar = Calendar.current
 
@@ -155,6 +156,9 @@ struct MonthlyCompletionView: View {
                 selectedWeek = weeklySummaries.last
             }
         }
+        // Applied here as well as in ContentView: the floating button's gesture
+        // modifiers host it outside the parent's accessibility scope.
+        .accessibilityHidden(!isActiveScreen)
     }
 
     private var headerSection: some View {

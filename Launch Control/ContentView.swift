@@ -9,17 +9,15 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            VStack(spacing: 0) {
-                ProtocolView()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-
-                CalendarView()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-
-                CompletionContainerView()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+            // Each screen is offset individually rather than sliding one tall stack,
+            // so the visible screen always sits at offset 0 and reports accessibility
+            // frames that match where it actually appears.
+            ZStack {
+                screen(0, in: geometry) { ProtocolView() }
+                screen(1, in: geometry) { CalendarView() }
+                screen(2, in: geometry) { CompletionContainerView() }
             }
-            .offset(y: -CGFloat(currentScreen) * geometry.size.height)
+            .clipped()
             .animation(.easeInOut(duration: 0.3), value: currentScreen)
             .simultaneousGesture(
                 DragGesture()
@@ -76,6 +74,25 @@ struct ContentView: View {
                     }
             }
         }
+    }
+
+    @ViewBuilder
+    private func screen<Content: View>(
+        _ index: Int,
+        in geometry: GeometryProxy,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .offset(y: CGFloat(index - currentScreen) * geometry.size.height)
+            // Off-screen pages have to leave the accessibility tree, or VoiceOver
+            // walks straight into content the user can't see.
+            .accessibilityHidden(currentScreen != index)
+            // A NavigationStack hosts its content outside this view's accessibility
+            // scope, so screens that use one hide themselves off this instead.
+            .environment(\.isActiveScreen, currentScreen == index)
+            // Stops a mis-tap landing on a neighbouring page mid-animation.
+            .allowsHitTesting(currentScreen == index)
     }
 }
 
