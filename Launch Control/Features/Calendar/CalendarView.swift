@@ -65,7 +65,8 @@ struct CalendarView: View {
             Color.appBackground
                 .ignoresSafeArea()
 
-            VStack(alignment: .leading, spacing: 16) {
+            PageScrollView(page: 1) {
+                VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 0) {
                     DatePicker(
                         "",
@@ -109,10 +110,12 @@ struct CalendarView: View {
                         }
                     }
                 }
-
-                Spacer()
+                }
+                .padding()
+                // Clears the floating add button so the last rows stay readable.
+                .padding(.bottom, 120)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding()
 
             FloatingAddButton(action: {
                 eventTitle = ""

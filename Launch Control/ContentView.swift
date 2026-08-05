@@ -4,6 +4,7 @@ struct ContentView: View {
     @State private var currentScreen = 0
     @AppStorage("hasSeenSwipeHint") private var hasSeenSwipeHint = false
     @State private var chevronOpacity: Double = 0.15
+    @State private var pageEdges: [Int: ScrollEdges] = [:]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -28,14 +29,21 @@ struct ContentView: View {
 
                         guard abs(verticalAmount) > 80, abs(verticalAmount) > horizontalAmount else { return }
 
-                        if verticalAmount < 0, currentScreen < 2 {
+                        // Hand the swipe to the pager only once the content inside this
+                        // screen has been scrolled to the end it's heading towards.
+                        let edges = pageEdges[currentScreen]
+
+                        if verticalAmount < 0, currentScreen < 2, edges?.atBottom != false {
                             hasSeenSwipeHint = true
                             currentScreen += 1
-                        } else if verticalAmount > 0, currentScreen > 0 {
+                        } else if verticalAmount > 0, currentScreen > 0, edges?.atTop != false {
                             currentScreen -= 1
                         }
                     }
             )
+            .onPreferenceChange(ScrollEdgesKey.self) { newValue in
+                pageEdges = newValue
+            }
             .accessibilityScrollAction { edge in
                 switch edge {
                 case .bottom:

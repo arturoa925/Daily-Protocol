@@ -59,7 +59,9 @@ struct ProtocolView: View {
                 Color.appBackground
                     .ignoresSafeArea()
 
-                protocolContent
+                PageScrollView(page: 0) {
+                    protocolContent
+                }
 
                 addEventButton
             }
@@ -119,10 +121,11 @@ struct ProtocolView: View {
             } else {
                 todaysEventsList
             }
-
-            Spacer()
         }
         .padding()
+        // Clears the floating add button so the last rows stay readable.
+        .padding(.bottom, 120)
+        .frame(maxWidth: .infinity)
     }
 
     private var streakBadge: some View {

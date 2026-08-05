@@ -71,7 +71,7 @@ struct WeeklyCompletionView: View {
             Color.appBackground
                 .ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
+            PageScrollView(page: 2) {
                 VStack(spacing: 0) {
                     headerSection
                         .padding(.top, 36)
@@ -314,7 +314,7 @@ private struct WeeklyBarChartView: View {
     @AccessibilityFocusState private var focusedSummaryID: Date?
 
     private let maxBarHeight: CGFloat = 160
-    private let barWidth: CGFloat = 28
+    private let maxBarWidth: CGFloat = 28
     private let barSpacing: CGFloat = 14
     private let dotSize: CGFloat = 6
     private let dotVerticalOffset: CGFloat = 8
@@ -351,6 +351,8 @@ private struct WeeklyBarChartView: View {
                             style: StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round, dash: [3, 4])
                         )
                         .animation(.easeOut(duration: 0.55), value: dottedLineProgress)
+
+                    let barWidth = barWidth(forAvailable: proxy.size.width)
 
                     HStack(alignment: .bottom, spacing: barSpacing) {
                         ForEach(Array(summaries.enumerated()), id: \.element.id) { index, summary in
@@ -450,6 +452,15 @@ private struct WeeklyBarChartView: View {
         return isSelected ? "Selected. \(baseValue)" : baseValue
     }
 
+    /// Shrinks the bars when the container is too narrow to fit them at full width,
+    /// so the chart stays inside its margins on smaller iPhones.
+    private func barWidth(forAvailable width: CGFloat) -> CGFloat {
+        let count = CGFloat(summaries.count)
+        guard count > 0 else { return 0 }
+
+        return min(maxBarWidth, max((width - barSpacing * (count - 1)) / count, 1))
+    }
+
     private func height(for count: Int) -> CGFloat {
         guard count > 0 else { return 18 }
         return max((CGFloat(count) / CGFloat(maxTotalCount)) * maxBarHeight, 18)
@@ -472,6 +483,7 @@ private struct WeeklyBarChartView: View {
         var path = Path()
         guard !summaries.isEmpty else { return path }
 
+        let barWidth = barWidth(forAvailable: size.width)
         let stepX = barWidth + barSpacing
         let totalWidth = (CGFloat(summaries.count) * barWidth) + (CGFloat(max(summaries.count - 1, 0)) * barSpacing)
         let leadingInset = max((size.width - totalWidth) / 2, 0)
