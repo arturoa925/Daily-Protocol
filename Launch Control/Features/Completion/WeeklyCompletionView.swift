@@ -318,15 +318,6 @@ private struct WeeklyBarChartView: View {
     private let barSpacing: CGFloat = 14
     private let dotSize: CGFloat = 6
     private let dotVerticalOffset: CGFloat = 8
-    private let barOutlineColor = Color.textPrimary.opacity(0.10)
-    private let barFillGradient = LinearGradient(
-        colors: [
-            Color.chartBarBottom,
-            Color.chartBarTop
-        ],
-        startPoint: .bottom,
-        endPoint: .top
-    )
     private let accentLineColor = Color.chartAccentLine
 
     private var chartAccessibilityLabel: String {
@@ -375,39 +366,13 @@ private struct WeeklyBarChartView: View {
                                 }
                             } label: {
                                 VStack(spacing: 8) {
-                                    ZStack(alignment: .bottom) {
-                                        RoundedRectangle(cornerRadius: 0)
-                                            .stroke(barOutlineColor, lineWidth: 1)
-                                            .frame(width: barWidth, height: totalHeight)
-
-                                        ZStack(alignment: .top) {
-                                            RoundedRectangle(cornerRadius: 0)
-                                                .fill(barFillGradient)
-
-                                            RoundedRectangle(cornerRadius: 0)
-                                                .fill(
-                                                    LinearGradient(
-                                                        colors: [
-                                                            Color.white.opacity(0.26),
-                                                            Color.white.opacity(0.08),
-                                                            Color.clear
-                                                        ],
-                                                        startPoint: .top,
-                                                        endPoint: .bottom
-                                                    )
-                                                )
-                                                .frame(height: max(animatedCompletedHeight * 0.38, 0))
-                                                .blur(radius: 2)
-                                                .allowsHitTesting(false)
-                                        }
-                                        .frame(width: barWidth, height: animatedCompletedHeight, alignment: .bottom)
-                                        .clipped()
-                                        .opacity(isSelected ? 1.0 : 0.94)
-                                        .brightness(isSelected ? 0.04 : 0)
-                                        .shadow(color: isSelected ? Color.white.opacity(0.08) : Color.clear, radius: 6, x: 0, y: 0)
-                                    }
-                                    .frame(width: barWidth, height: maxBarHeight, alignment: .bottom)
-                                    .scaleEffect(x: isSelected ? 1.04 : 1.0, y: 1.0, anchor: .bottom)
+                                    CompletionBar(
+                                        barWidth: barWidth,
+                                        maxBarHeight: maxBarHeight,
+                                        totalHeight: totalHeight,
+                                        completedHeight: animatedCompletedHeight,
+                                        isSelected: isSelected
+                                    )
                                     .animation(.spring(response: 0.26, dampingFraction: 0.82), value: isSelected)
                                     .overlay(alignment: .bottom) {
                                         Circle()
@@ -500,7 +465,7 @@ private struct WeeklyBarChartView: View {
 
     private func dotYPosition(for summary: WeeklyCompletionView.WeekDaySummary) -> CGFloat {
         let animatedCompletedHeight = animatedBarIDs.contains(summary.id) ? completedHeight(for: summary) : 0
-        return maxBarHeight - animatedCompletedHeight - 10
+        return maxBarHeight - animatedCompletedHeight - dotVerticalOffset - (dotSize / 2)
     }
 
     private func dottedLinePath(in size: CGSize) -> Path {
