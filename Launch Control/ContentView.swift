@@ -8,6 +8,9 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        // Without this, GeometryReader reports the safe-area-constrained size, so
+        // .clipped() below would clip every screen's edge-to-edge background to the
+        // safe area instead of the true device bounds.
         GeometryReader { geometry in
             // Each screen is offset individually rather than sliding one tall stack,
             // so the visible screen always sits at offset 0 and reports accessibility
@@ -58,6 +61,7 @@ struct ContentView: View {
                 }
             }
         }
+        .ignoresSafeArea()
         .overlay(alignment: .bottom) {
             if currentScreen == 0, !hasSeenSwipeHint {
                 Image(systemName: "chevron.down")

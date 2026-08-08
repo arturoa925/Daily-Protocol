@@ -7,6 +7,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("appAppearance") private var appearanceRaw: String = AppearanceMode.system.rawValue
+    @AppStorage("actionButtonSide") private var actionButtonSideRaw: String = ActionButtonSide.trailing.rawValue
     // used to dismiss the sheet
     @Environment(\.dismiss) private var dismiss
 
@@ -14,6 +15,13 @@ struct SettingsView: View {
         Binding(
             get: { AppearanceMode(rawValue: appearanceRaw) ?? .system },
             set: { appearanceRaw = $0.rawValue }
+        )
+    }
+
+    private var actionButtonSide: Binding<ActionButtonSide> {
+        Binding(
+            get: { ActionButtonSide(rawValue: actionButtonSideRaw) ?? .trailing },
+            set: { actionButtonSideRaw = $0.rawValue }
         )
     }
 
@@ -33,6 +41,21 @@ struct SettingsView: View {
                     Text("Appearance")
                 } footer: {
                     Text("Choose how Launch Control looks, or match your device's system setting.")
+                }
+
+                Section {
+                    Picker("Action Button", selection: actionButtonSide) {
+                        ForEach(ActionButtonSide.allCases) { side in
+                            Text(side.label).tag(side)
+                        }
+                    }
+                    .pickerStyle(.inline)
+                    .accessibilityLabel("Action button position")
+                    .accessibilityValue(actionButtonSide.wrappedValue.label)
+                } header: {
+                    Text("Action Button")
+                } footer: {
+                    Text("Choose which side of the screen the add and toggle buttons appear on.")
                 }
             }
             .navigationTitle("Settings")

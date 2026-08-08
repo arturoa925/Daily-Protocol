@@ -26,6 +26,11 @@ struct CalendarView: View {
 
     @State private var swipedEventID: PersistentIdentifier?
     @Environment(\.isActiveScreen) private var isActiveScreen
+    @AppStorage("actionButtonSide") private var actionButtonSideRaw: String = ActionButtonSide.trailing.rawValue
+
+    private var actionButtonSide: ActionButtonSide {
+        ActionButtonSide(rawValue: actionButtonSideRaw) ?? .trailing
+    }
 
     @State private var showNotesSheet = false
     @State private var showCategorySheet = false
@@ -62,7 +67,7 @@ struct CalendarView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: actionButtonSide.alignment) {
             Color.appBackground
                 .ignoresSafeArea()
 

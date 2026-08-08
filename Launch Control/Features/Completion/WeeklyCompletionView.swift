@@ -23,6 +23,11 @@ struct WeeklyCompletionView: View {
     @State private var selectedDay: WeekDaySummary?
     @State private var isPressingCalendarButton = false
     @Environment(\.isActiveScreen) private var isActiveScreen
+    @AppStorage("actionButtonSide") private var actionButtonSideRaw: String = ActionButtonSide.trailing.rawValue
+
+    private var actionButtonSide: ActionButtonSide {
+        ActionButtonSide(rawValue: actionButtonSideRaw) ?? .trailing
+    }
 
     private let calendar = Calendar.current
 
@@ -68,7 +73,7 @@ struct WeeklyCompletionView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: actionButtonSide.alignment) {
             Color.appBackground
                 .ignoresSafeArea()
 
@@ -167,7 +172,7 @@ struct WeeklyCompletionView: View {
                         isPressingCalendarButton = false
                     }
             )
-            .padding(.trailing, 20)
+            .padding(actionButtonSide.edge, 20)
             .padding(.bottom, 20)
             .accessibilityAddTraits(.isButton)
             .accessibilitySortPriority(3)

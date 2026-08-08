@@ -29,6 +29,11 @@ struct ProtocolView: View {
     @State private var eventPendingDeletion: Event?
     @State private var showSettings = false
     @Environment(\.isActiveScreen) private var isActiveScreen
+    @AppStorage("actionButtonSide") private var actionButtonSideRaw: String = ActionButtonSide.trailing.rawValue
+
+    private var actionButtonSide: ActionButtonSide {
+        ActionButtonSide(rawValue: actionButtonSideRaw) ?? .trailing
+    }
 
     private let categories = ["Work", "Health", "Education", "Personal", "Social"]
     @State private var swipedEventID: PersistentIdentifier?
@@ -56,7 +61,7 @@ struct ProtocolView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack(alignment: actionButtonSide.alignment) {
                 Color.appBackground
                     .ignoresSafeArea()
 

@@ -16,6 +16,11 @@ struct MonthlyCompletionView: View {
     @State private var selectedWeek: MonthWeekSummary?
     @State private var isPressingWeekButton = false
     @Environment(\.isActiveScreen) private var isActiveScreen
+    @AppStorage("actionButtonSide") private var actionButtonSideRaw: String = ActionButtonSide.trailing.rawValue
+
+    private var actionButtonSide: ActionButtonSide {
+        ActionButtonSide(rawValue: actionButtonSideRaw) ?? .trailing
+    }
 
     private let calendar = Calendar.current
 
@@ -51,7 +56,7 @@ struct MonthlyCompletionView: View {
     
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        ZStack(alignment: actionButtonSide.alignment) {
             Color.appBackground
             .ignoresSafeArea()
 
@@ -145,7 +150,7 @@ struct MonthlyCompletionView: View {
                         isPressingWeekButton = false
                     }
             )
-            .padding(.trailing, 20)
+            .padding(actionButtonSide.edge, 20)
             .padding(.bottom, 20)
             .accessibilityLabel("Show weekly progress")
             .accessibilityHint("Opens the weekly progress view.")
