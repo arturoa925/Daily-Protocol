@@ -8,19 +8,25 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        // Without this, GeometryReader reports the safe-area-constrained size, so
-        // .clipped() below would clip every screen's edge-to-edge background to the
-        // safe area instead of the true device bounds.
         GeometryReader { geometry in
             // Each screen is offset individually rather than sliding one tall stack,
             // so the visible screen always sits at offset 0 and reports accessibility
             // frames that match where it actually appears.
+            //
+            // Deliberately not clipped: each screen already fills exactly one
+            // device-screen's worth of space and is offset in whole-screen
+            // increments, so an inactive screen never overlaps the visible one at
+            // rest. Clipping this container also clips every screen's own
+            // Color.appBackground.ignoresSafeArea() background, cutting it off at
+            // the safe area instead of the true device edges — and expanding the
+            // clip boundary back out (via .ignoresSafeArea() on the ZStack) makes
+            // the ZStack larger than its children, which then center inside it and
+            // leave gaps at the top and bottom instead.
             ZStack {
                 screen(0, in: geometry) { ProtocolView() }
                 screen(1, in: geometry) { CalendarView() }
                 screen(2, in: geometry) { CompletionContainerView() }
             }
-            .clipped()
             .animation(.easeInOut(duration: 0.3), value: currentScreen)
             .simultaneousGesture(
                 DragGesture()
@@ -61,7 +67,6 @@ struct ContentView: View {
                 }
             }
         }
-        .ignoresSafeArea()
         .overlay(alignment: .bottom) {
             if currentScreen == 0, !hasSeenSwipeHint {
                 Image(systemName: "chevron.down")
