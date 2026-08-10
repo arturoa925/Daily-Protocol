@@ -1,9 +1,4 @@
-//
-//  CalendarView.swift
-//  Launch Control
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
+
 
 import SwiftUI
 import SwiftData
@@ -18,11 +13,7 @@ struct CalendarView: View {
     ]) private var events: [Event]
 
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
-    @State private var showAddEventSheet = false
-    @State private var eventTitle = ""
-    @State private var hasReminder = false
-    @State private var reminderDate = Date()
-    @State private var notificationErrorMessage: String?
+    @State private var editor = EventEditor()
 
     @State private var swipedEventID: PersistentIdentifier?
     @Environment(\.isActiveScreen) private var isActiveScreen
@@ -31,14 +22,6 @@ struct CalendarView: View {
     private var actionButtonSide: ActionButtonSide {
         ActionButtonSide(rawValue: actionButtonSideRaw) ?? .trailing
     }
-
-    @State private var showNotesSheet = false
-    @State private var showCategorySheet = false
-    @State private var selectedEvent: Event?
-    @State private var noteDraft = ""
-    @State private var categoryDraft = ""
-    @State private var eventPendingDeletion: Event?
-    private let categories = ["Work", "Health", "Education", "Personal", "Social"]
 
     private var eventsForSelectedDate: [Event] {
         events.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
@@ -72,6 +55,7 @@ struct CalendarView: View {
                 .ignoresSafeArea()
 
             PageScrollView(page: 1) {
+                // calendar with events
                 VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 0) {
                     DatePicker(
@@ -124,120 +108,39 @@ struct CalendarView: View {
             }
 
             FloatingAddButton(action: {
-                eventTitle = ""
-                hasReminder = false
                 // Default reminder time to selected day at 9 AM
                 let calendar = Calendar.current
-                reminderDate = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: selectedDate) ?? selectedDate
-                showAddEventSheet = true
+                let defaultReminderDate = calendar.date(bySettingHour: 9, minute: 0, second: 0, of: selectedDate) ?? selectedDate
+                editor.prepareForNewEvent(defaultReminderDate: defaultReminderDate)
             })
             .accessibilityLabel("Add event")
             .accessibilityValue(selectedDateAccessibilityLabel)
             .accessibilityHint("Opens the sheet to create a new event for the selected date")
             .accessibilitySortPriority(1)
             .padding(24)
-            .sheet(isPresented: $showAddEventSheet) {
-                AddEventSheet(
-                    title: $eventTitle,
-                    hasReminder: $hasReminder,
-                    reminderDate: $reminderDate,
-                    onCancel: { showAddEventSheet = false },
-                    onSave: {
-                        let trimmedTitle = eventTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let reminder = hasReminder ? reminderDate : nil
-
-                        // Ensure the event's date is the selected day (start of day)
-                        let day = Calendar.current.startOfDay(for: selectedDate)
-                        let newEvent = Event(
-                            title: trimmedTitle,
-                            date: day,
-                            time: nil,
-                            notes: "",
-                            category: "",
-                            hasReminder: hasReminder,
-                            reminderDate: reminder
-                        )
-
-                        modelContext.insert(newEvent)
-
-                        if let reminder {
-                            NotificationScheduler.scheduleNotification(for: newEvent.eventID.uuidString, title: trimmedTitle, reminderDate: reminder) { error in
-                                if let error {
-                                    DispatchQueue.main.async {
-                                        notificationErrorMessage = error.localizedDescription
-                                    }
-                                }
-                            }
-                        }
-
-                        showAddEventSheet = false
-                    }
-                )
-            }
-            .sheet(isPresented: $showNotesSheet) {
-                AddNotesSheet(
-                    notes: $noteDraft,
-                    onCancel: {
-                        showNotesSheet = false
-                        selectedEvent = nil
-                        noteDraft = ""
-                    },
-                    onSave: {
-                        selectedEvent?.notes = noteDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                        showNotesSheet = false
-                        selectedEvent = nil
-                        noteDraft = ""
-                    }
-                )
-            }
-            .sheet(isPresented: $showCategorySheet) {
-                AddCategorySheet(
-                    categories: categories,
-                    selection: $categoryDraft,
-                    onCancel: {
-                        showCategorySheet = false
-                        selectedEvent = nil
-                        categoryDraft = ""
-                    },
-                    onSave: {
-                        selectedEvent?.category = categoryDraft
-                        showCategorySheet = false
-                        selectedEvent = nil
-                        categoryDraft = ""
-                    }
-                )
-            }
-            .deleteEventAlert(pendingDeletion: $eventPendingDeletion, onDelete: { event in
-                deleteEvent(event)
-            })
-            .alert("Notification Issue", isPresented: Binding(
-                get: { notificationErrorMessage != nil },
-                set: { if !$0 { notificationErrorMessage = nil } }
-            )) {
-                Button("OK", role: .cancel) {
-                    notificationErrorMessage = nil
-                }
-                .accessibilityLabel("OK")
-                .accessibilityHint("Dismisses the notification issue message")
-                .accessibilitySortPriority(1)
-            } message: {
-                Text(notificationErrorMessage ?? "")
-            }
+            .eventEditingSheets(
+                editor: editor,
+                categories: EventEditor.defaultCategories,
+                modelContext: modelContext,
+                newEventDate: { Calendar.current.startOfDay(for: selectedDate) }
+            )
         }
         // Applied here as well as in ContentView: the floating button's sheet and
         // gesture modifiers host it outside the parent's accessibility scope.
         .accessibilityHidden(!isActiveScreen)
     }
 
+        // events container
     @ViewBuilder
     private func eventRow(for event: Event) -> some View {
         let completionActionName = event.isCompleted ? "Mark as not completed" : "Mark as completed"
 
         HStack(alignment: .center) {
+            // event text
             eventTextContent(for: event)
 
             Spacer()
-
+            // event modifiers
             eventTrailingActions(for: event)
         }
         .contentShape(Rectangle())
@@ -248,23 +151,23 @@ struct CalendarView: View {
         .accessibilityAddTraits(event.isCompleted ? [.isButton, .isSelected] : .isButton)
         .accessibilitySortPriority(1)
         .accessibilityAction(named: completionActionName) {
-            toggleCompletion(for: event)
+            editor.toggleCompletion(for: event)
         }
         .accessibilityAction(named: "Edit notes") {
-            presentNotes(for: event)
+            editor.presentNotes(for: event)
         }
         .accessibilityAction(named: "Edit category") {
-            presentCategory(for: event)
+            editor.presentCategory(for: event)
         }
         .accessibilityAction(named: "Delete event") {
-            eventPendingDeletion = event
+            editor.eventPendingDeletion = event
         }
         .simultaneousGesture(TapGesture())
         .onLongPressGesture {
-            presentNotes(for: event)
+            editor.presentNotes(for: event)
         }
         .onTapGesture(count: 2) {
-            presentCategory(for: event)
+            editor.presentCategory(for: event)
         }
         .gesture(eventSwipeGesture(for: event))
     }
@@ -272,7 +175,7 @@ struct CalendarView: View {
     @ViewBuilder
     private func eventTextContent(for event: Event) -> some View {
         VStack(spacing: 1) {
-            Text(eventTitle(for: event))
+            Text(event.displayTitle)
                 .font(.body)
                 .foregroundStyle(Color.textPrimary)
                 .strikethrough(event.isCompleted, color: Color.textPrimary)
@@ -311,7 +214,7 @@ struct CalendarView: View {
             }
 
             Button {
-                eventPendingDeletion = event
+                editor.eventPendingDeletion = event
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 14, weight: .medium))
@@ -331,6 +234,7 @@ struct CalendarView: View {
         }
     }
 
+    // swipe to mark as complete
     private func eventSwipeGesture(for event: Event) -> some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
@@ -360,38 +264,6 @@ struct CalendarView: View {
                     }
                 }
             }
-    }
-
-    private func toggleCompletion(for event: Event) {
-        withAnimation(.easeInOut(duration: 0.22)) {
-            event.isCompleted.toggle()
-        }
-    }
-
-    private func presentNotes(for event: Event) {
-        selectedEvent = event
-        noteDraft = event.notes
-        showNotesSheet = true
-    }
-
-    private func presentCategory(for event: Event) {
-        selectedEvent = event
-        categoryDraft = event.category
-        showCategorySheet = true
-    }
-
-    private func eventTitle(for event: Event) -> String {
-        if let time = event.time {
-            let formattedTime = time.formatted(.dateTime.hour().minute())
-            return "\(event.title) — \(formattedTime)"
-        }
-
-        if let reminderDate = event.reminderDate {
-            let formattedReminder = reminderDate.formatted(.dateTime.hour().minute())
-            return "\(event.title) — \(formattedReminder)"
-        }
-
-        return event.title
     }
 
     private func accessibilityLabel(for event: Event) -> String {
@@ -437,13 +309,6 @@ struct CalendarView: View {
         return "\(completionAction). Long press to edit notes. Double tap to edit category. Additional actions available."
     }
 
-    private func deleteEvent(_ event: Event) {
-        if let reminderDate = event.reminderDate, reminderDate > Date() {
-            let identifier = event.eventID.uuidString
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
-        }
-        modelContext.delete(event)
-    }
 }
 
 #Preview {

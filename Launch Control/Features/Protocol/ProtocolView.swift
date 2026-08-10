@@ -1,9 +1,4 @@
-//
-//  ProtocolView.swift
-//  Launch Control
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
+
 
 import SwiftUI
 import SwiftData
@@ -15,18 +10,8 @@ struct ProtocolView: View {
         SortDescriptor(\Event.date),
         SortDescriptor(\Event.createdAt)
     ]) private var events: [Event]
-    @State private var showAddEventSheet = false
     @Environment(\.modelContext) private var modelContext
-    @State private var eventTitle = ""
-    @State private var hasReminder = false
-    @State private var reminderDate = Date()
-    @State private var notificationErrorMessage: String?
-    @State private var showNotesSheet = false
-    @State private var selectedEvent: Event?
-    @State private var noteDraft = ""
-    @State private var showCategorySheet = false
-    @State private var categoryDraft = ""
-    @State private var eventPendingDeletion: Event?
+    @State private var editor = EventEditor()
     @State private var showSettings = false
     @Environment(\.isActiveScreen) private var isActiveScreen
     @AppStorage("actionButtonSide") private var actionButtonSideRaw: String = ActionButtonSide.trailing.rawValue
@@ -35,7 +20,6 @@ struct ProtocolView: View {
         ActionButtonSide(rawValue: actionButtonSideRaw) ?? .trailing
     }
 
-    private let categories = ["Work", "Health", "Education", "Personal", "Social"]
     @State private var swipedEventID: PersistentIdentifier?
 
     // events are being filtered to today's here using new 'events' var
@@ -163,22 +147,16 @@ struct ProtocolView: View {
                     position: index + 1,
                     total: todaysEvents.count,
                     onEditNotes: {
-                        selectedEvent = event
-                        noteDraft = event.notes
-                        showNotesSheet = true
+                        editor.presentNotes(for: event)
                     },
                     onChooseCategory: {
-                        selectedEvent = event
-                        categoryDraft = event.category
-                        showCategorySheet = true
+                        editor.presentCategory(for: event)
                     },
                     onDelete: {
-                        eventPendingDeletion = event
+                        editor.eventPendingDeletion = event
                     },
                     onToggleCompletion: {
-                        withAnimation(.easeInOut(duration: 0.22)) {
-                            event.isCompleted.toggle()
-                        }
+                        editor.toggleCompletion(for: event)
                     },
                     onSwipeCompletionChange: { completedEvent in
                         swipedEventID = completedEvent.persistentModelID
@@ -193,7 +171,7 @@ struct ProtocolView: View {
                         }
                     },
                     isSwipeLocked: swipedEventID == event.persistentModelID,
-                    titleText: eventTitle(for: event),
+                    titleText: event.displayTitle,
                     accessibilityText: accessibilitySummary(for: event, position: index + 1, total: todaysEvents.count)
                 )
             }
@@ -202,130 +180,19 @@ struct ProtocolView: View {
     }
 
     private var addEventButton: some View {
-        FloatingAddButton(action: prepareForNewEvent)
+        FloatingAddButton(action: { editor.prepareForNewEvent(defaultReminderDate: Date()) })
             .buttonStyle(.plain)
             .accessibilityLabel("Add event")
             .accessibilityHint("Opens a sheet to create a new event for today.")
             .accessibilityAddTraits(.isButton)
             .accessibilitySortPriority(4)
             .padding(24)
-            .sheet(isPresented: $showAddEventSheet) {
-                addEventSheet
-            }
-            .sheet(isPresented: $showNotesSheet) {
-                notesSheet
-            }
-            .sheet(isPresented: $showCategorySheet) {
-                categorySheet
-            }
-            .deleteEventAlert(pendingDeletion: $eventPendingDeletion, onDelete: deleteEvent)
-            .alert("Notification Issue", isPresented: notificationAlertBinding) {
-                Button("OK", role: .cancel) {
-                    notificationErrorMessage = nil
-                }
-            } message: {
-                Text(notificationErrorMessage ?? "")
-            }
-    }
-
-    private var addEventSheet: some View {
-        AddEventSheet(
-            title: $eventTitle,
-            hasReminder: $hasReminder,
-            reminderDate: $reminderDate,
-            onCancel: { showAddEventSheet = false },
-            onSave: saveNewEvent
-        )
-    }
-
-    private var notesSheet: some View {
-        AddNotesSheet(
-            notes: $noteDraft,
-            onCancel: cancelNotesEditing,
-            onSave: saveNotes
-        )
-    }
-
-    private var categorySheet: some View {
-        AddCategorySheet(
-            categories: categories,
-            selection: $categoryDraft,
-            onCancel: cancelCategoryEditing,
-            onSave: saveCategory
-        )
-    }
-
-    private var notificationAlertBinding: Binding<Bool> {
-        Binding(
-            get: { notificationErrorMessage != nil },
-            set: { if !$0 { notificationErrorMessage = nil } }
-        )
-    }
-
-    private func prepareForNewEvent() {
-        eventTitle = ""
-        hasReminder = false
-        reminderDate = Date()
-        showAddEventSheet = true
-    }
-
-    private func saveNewEvent() {
-        let trimmedTitle = eventTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let reminder = hasReminder ? reminderDate : nil
-
-        let newEvent = Event(
-            title: trimmedTitle,
-            date: Date(),
-            time: nil,
-            notes: "",
-            category: "",
-            hasReminder: hasReminder,
-            reminderDate: reminder
-        )
-
-        modelContext.insert(newEvent)
-
-        if let reminder {
-            NotificationScheduler.scheduleNotification(
-                for: newEvent.eventID.uuidString,
-                title: trimmedTitle,
-                reminderDate: reminder
-            ) { error in
-                if let error {
-                    DispatchQueue.main.async {
-                        notificationErrorMessage = error.localizedDescription
-                    }
-                }
-            }
-        }
-
-        showAddEventSheet = false
-    }
-
-    private func cancelNotesEditing() {
-        showNotesSheet = false
-        selectedEvent = nil
-        noteDraft = ""
-    }
-
-    private func saveNotes() {
-        selectedEvent?.notes = noteDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-        showNotesSheet = false
-        selectedEvent = nil
-        noteDraft = ""
-    }
-
-    private func cancelCategoryEditing() {
-        showCategorySheet = false
-        selectedEvent = nil
-        categoryDraft = ""
-    }
-
-    private func saveCategory() {
-        selectedEvent?.category = categoryDraft
-        showCategorySheet = false
-        selectedEvent = nil
-        categoryDraft = ""
+            .eventEditingSheets(
+                editor: editor,
+                categories: EventEditor.defaultCategories,
+                modelContext: modelContext,
+                newEventDate: { Date() }
+            )
     }
 
     private func accessibilitySummary(for event: Event, position: Int, total: Int) -> String {
@@ -354,28 +221,6 @@ struct ProtocolView: View {
         return parts.joined(separator: ", ")
     }
 
-    private func deleteEvent(_ event: Event) {
-        if let reminderDate = event.reminderDate, reminderDate > Date() {
-            let identifier = event.eventID.uuidString
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [identifier])
-        }
-
-        modelContext.delete(event)
-    }
-
-    private func eventTitle(for event: Event) -> String {
-        if let time = event.time {
-            let formattedTime = time.formatted(.dateTime.hour().minute())
-            return "\(event.title) — \(formattedTime)"
-        }
-
-        if let reminderDate = event.reminderDate {
-            let formattedReminder = reminderDate.formatted(.dateTime.hour().minute())
-            return "\(event.title) — \(formattedReminder)"
-        }
-
-        return event.title
-    }
 }
 
 private struct ProtocolEventRowView: View {
