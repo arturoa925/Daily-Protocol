@@ -9,19 +9,7 @@ struct ContentView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            // Each screen is offset individually rather than sliding one tall stack,
-            // so the visible screen always sits at offset 0 and reports accessibility
-            // frames that match where it actually appears.
-            //
-            // Deliberately not clipped: each screen already fills exactly one
-            // device-screen's worth of space and is offset in whole-screen
-            // increments, so an inactive screen never overlaps the visible one at
-            // rest. Clipping this container also clips every screen's own
-            // Color.appBackground.ignoresSafeArea() background, cutting it off at
-            // the safe area instead of the true device edges — and expanding the
-            // clip boundary back out (via .ignoresSafeArea() on the ZStack) makes
-            // the ZStack larger than its children, which then center inside it and
-            // leave gaps at the top and bottom instead.
+            
             ZStack {
                 screen(0, in: geometry) { ProtocolView() }
                 screen(1, in: geometry) { CalendarView() }

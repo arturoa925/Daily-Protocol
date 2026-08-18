@@ -1,9 +1,4 @@
-//
-//  AddEventSheet.swift
-//  Launch Control
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
+
 
 import SwiftUI
 

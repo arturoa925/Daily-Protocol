@@ -1,7 +1,3 @@
-//
-//  CompletionBar.swift
-//  Launch Control
-//
 
 import SwiftUI
 
@@ -76,3 +72,63 @@ struct CompletionBar: View {
         .shadow(color: isSelected ? .black.opacity(0.18) : .clear, radius: 6, x: 0, y: 3)
     }
 }
+#Preview("Completion Bars") {
+    HStack(alignment: .bottom, spacing: 12) {
+        // Empty bar
+        CompletionBar(
+            barWidth: 30,
+            maxBarHeight: 120,
+            totalHeight: 80,
+            completedHeight: 0,
+            isSelected: false
+        )
+        
+        // Partially filled
+        CompletionBar(
+            barWidth: 30,
+            maxBarHeight: 120,
+            totalHeight: 100,
+            completedHeight: 35,
+            isSelected: false
+        )
+        
+        // Half filled
+        CompletionBar(
+            barWidth: 30,
+            maxBarHeight: 120,
+            totalHeight: 90,
+            completedHeight: 45,
+            isSelected: false
+        )
+        
+        // Mostly filled - selected
+        CompletionBar(
+            barWidth: 30,
+            maxBarHeight: 120,
+            totalHeight: 110,
+            completedHeight: 95,
+            isSelected: true
+        )
+        
+        // Fully filled
+        CompletionBar(
+            barWidth: 30,
+            maxBarHeight: 120,
+            totalHeight: 120,
+            completedHeight: 120,
+            isSelected: false
+        )
+        
+        // Very short bar
+        CompletionBar(
+            barWidth: 30,
+            maxBarHeight: 120,
+            totalHeight: 20,
+            completedHeight: 15,
+            isSelected: false
+        )
+    }
+    .padding()
+    .background(Color(white: 0.95))
+}
+

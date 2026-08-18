@@ -1,9 +1,4 @@
-//
-//  Launch_ControlApp.swift
-//  Launch Control
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
+
 
 import SwiftUI
 import SwiftData
@@ -20,21 +15,41 @@ struct Launch_ControlApp: App {
     private static let logger = Logger(subsystem: "AA.Launch-Control", category: "Persistence")
 
     init() {
-        let container = Self.makeModelContainer()
+        // Gives UI tests a known-clean starting state: without this, the SwiftData
+        // store and @AppStorage settings persist across separate test runs on the
+        // simulator, and leftover data from one test shifts UI another test expects
+        // to find at a fixed position.
+        let isUITestReset = ProcessInfo.processInfo.arguments.contains("-uiTestReset")
+        if isUITestReset, let bundleID = Bundle.main.bundleIdentifier {
+            UserDefaults.standard.removePersistentDomain(forName: bundleID)
+        }
+
+        let container = Self.makeModelContainer(resetStore: isUITestReset)
         sharedModelContainer = container
         notificationDelegate = EventNotificationDelegate(modelContainer: container)
         UNUserNotificationCenter.current().delegate = notificationDelegate
         NotificationScheduler.registerCategories()
     }
 
-    private static func makeModelContainer() -> ModelContainer {
+    private static func makeModelContainer(resetStore: Bool = false) -> ModelContainer {
         let schema = Schema([Event.self])
         let appGroupID = "group.AA.Launch-Control"
+        let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID)
         let config: ModelConfiguration
-        if let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {
+        if let groupURL {
             config = ModelConfiguration(schema: schema, url: groupURL.appendingPathComponent("LaunchControl.store"))
         } else {
             config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        }
+
+        if resetStore {
+            // Whether the App Group container resolves has been observed to vary by
+            // launch context (e.g. a UI test runner process vs. a plain simulator
+            // launch), which would silently point separate launches at two different
+            // store files. Clearing both possible locations makes the reset correct
+            // regardless of which one `config` above actually resolved to.
+            removeStoreFiles(for: config)
+            removeStoreFiles(for: ModelConfiguration(schema: schema, isStoredInMemoryOnly: false))
         }
 
         if let container = try? ModelContainer(for: schema, configurations: [config]) {

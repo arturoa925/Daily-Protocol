@@ -1,7 +1,4 @@
-//
-//  PageScrollView.swift
-//  Launch Control
-//
+
 
 import SwiftUI
 

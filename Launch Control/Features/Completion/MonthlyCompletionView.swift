@@ -1,9 +1,4 @@
-//
-//  MonthlyCompletionView.swift
-//  Launch Control
-//
-//  Created by Arturo Ayala on 3/25/26.
-//
+
 
 import SwiftUI
 import SwiftData
@@ -29,6 +24,7 @@ struct MonthlyCompletionView: View {
     }
 
     private var weeklySummaries: [MonthWeekSummary] {
+        // break last 4 weeks apart
         lastFourWeekStarts.map { weekStart in
             let weekEvents = CompletionCalculator.events(events, inWeekStartingAt: weekStart, calendar: calendar)
 
@@ -75,6 +71,7 @@ struct MonthlyCompletionView: View {
                 }
                 .padding(.horizontal, 24)
             }
+            
             Button {
                 onShowWeek()
             } label: {
@@ -168,13 +165,9 @@ struct MonthlyCompletionView: View {
 
     private var headerSection: some View {
         VStack(spacing: 10) {
-            Text("Progress Over 4 Weeks")
+            Text("Progress Over Last 4 Weeks")
                 .font(.title2)
                 .foregroundStyle(Color.textPrimary)
-
-            Text("Last 4 weeks")
-                .font(.headline)
-                .foregroundStyle(Color.textPrimary.opacity(0.9))
 
             Text("Total Events : \(totalEventsAcrossFourWeeks)")
                 .font(.subheadline)

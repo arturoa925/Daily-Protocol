@@ -1,9 +1,4 @@
-//
-//  Launch_ControlTests.swift
-//  Launch ControlTests
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
+
 
 import Foundation
 import Testing
@@ -15,9 +10,7 @@ struct Launch_ControlTests {
         // Write your test here and use APIs like `#expect(...)` to check expected conditions.
     }
 
-    // MARK: - Helpers
-
-    /// Fixed calendar so these tests don't shift with the runner's locale/time zone.
+ 
     private static func fixedCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
@@ -86,7 +79,7 @@ struct Launch_ControlTests {
         #expect(StreakCalculator.currentStreak(events: events, calendar: calendar, referenceDate: today) == 2)
     }
 
-    // MARK: - CompletionCalculator.weekDays
+    // MARK: - weekDays
 
     @Test func weekDaysReturnsSevenConsecutiveDaysStartingOnFirstWeekday() {
         let calendar = Self.fixedCalendar()
@@ -118,7 +111,7 @@ struct Launch_ControlTests {
         #expect(calendar.isDate(days[6], inSameDayAs: Self.date(2027, 1, 2, calendar: calendar)))
     }
 
-    // MARK: - CompletionCalculator.lastFourWeekStarts
+    // MARK: - lastFourWeekStarts
 
     @Test func lastFourWeekStartsEndsWithTheReferenceWeek() {
         let calendar = Self.fixedCalendar()

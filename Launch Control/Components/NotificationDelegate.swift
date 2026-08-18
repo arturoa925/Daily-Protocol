@@ -1,7 +1,4 @@
-//
-//  NotificationDelegate.swift
-//  Launch Control
-//
+
 
 import Foundation
 import SwiftData
@@ -14,6 +11,7 @@ final class EventNotificationDelegate: NSObject, UNUserNotificationCenterDelegat
         self.modelContainer = modelContainer
     }
 
+    // marks as done when notification is received and interacted
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,

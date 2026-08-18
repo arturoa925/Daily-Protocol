@@ -31,21 +31,11 @@ final class Launch_ControlUITests: XCTestCase {
         // Use XCTAssert and related functions to verify your tests produce the correct results.
     }
 
-    /// Swipes up until `element` appears. A screen with a long list scrolls first and
-    /// only pages once it reaches the bottom, so this needs several swipes.
-    @MainActor
-    private func swipeUp(in app: XCUIApplication, until element: XCUIElement, maxSwipes: Int = 12) {
-        for _ in 0..<maxSwipes where !element.exists {
-            app.swipeUp()
-        }
-    }
-
     /// Only the visible screen should be in the accessibility tree. Without this,
     /// VoiceOver can traverse into the screens above and below the current one.
     @MainActor
     func testOffScreenPagesAreHiddenFromAccessibility() throws {
-        let app = XCUIApplication()
-        app.launch()
+        let app = XCUIApplication.launchedFresh()
 
         let protocolHeader = app.staticTexts["Events for today"]
         let calendarPicker = app.datePickers.firstMatch
@@ -53,7 +43,7 @@ final class Launch_ControlUITests: XCTestCase {
         XCTAssertTrue(protocolHeader.waitForExistence(timeout: 5), "Should start on the Protocol screen")
         XCTAssertFalse(calendarPicker.exists, "The Calendar screen should not be reachable while it's off-screen")
 
-        swipeUp(in: app, until: calendarPicker)
+        app.swipeUp(until: calendarPicker)
 
         XCTAssertTrue(calendarPicker.exists, "Should reach the Calendar screen")
         XCTAssertFalse(protocolHeader.exists, "The Protocol screen should drop out once it's off-screen")

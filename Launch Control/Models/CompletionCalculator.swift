@@ -1,7 +1,4 @@
-//
-//  CompletionCalculator.swift
-//  Launch Control
-//
+
 
 import Foundation
 

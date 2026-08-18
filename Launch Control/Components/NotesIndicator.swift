@@ -1,9 +1,3 @@
-//
-//  NotesIndicator.swift
-//  Launch Control
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
 
 import SwiftUI
 // CGFloat is a double used specifically for UI math

@@ -1,7 +1,3 @@
-//
-//  SettingsView.swift
-//  Launch Control
-//
 
 import SwiftUI
 
@@ -35,8 +31,12 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.inline)
-                    .accessibilityLabel("Appearance")
-                    .accessibilityValue(appearance.wrappedValue.label)
+                    // Deliberately no .accessibilityLabel/.accessibilityValue here:
+                    // with .pickerStyle(.inline) they cascade down to every row
+                    // inside the picker rather than just summarizing the picker as a
+                    // whole, so VoiceOver announced "Appearance, Light" on every row
+                    // regardless of which option it actually was. Each row's own
+                    // Text already gives it a correct, distinct label on its own.
                 } header: {
                     Text("Appearance")
                 } footer: {
@@ -50,8 +50,7 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.inline)
-                    .accessibilityLabel("Action button position")
-                    .accessibilityValue(actionButtonSide.wrappedValue.label)
+                    // See the comment on the Appearance picker above.
                 } header: {
                     Text("Action Button")
                 } footer: {
