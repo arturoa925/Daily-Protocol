@@ -1,7 +1,3 @@
-//
-//  ScrollEdgesTests.swift
-//  Launch ControlTests
-//
 
 import Testing
 @testable import Launch_Control

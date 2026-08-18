@@ -1,7 +1,3 @@
-//
-//  CalendarFlowUITests.swift
-//  Launch ControlUITests
-//
 
 import XCTest
 

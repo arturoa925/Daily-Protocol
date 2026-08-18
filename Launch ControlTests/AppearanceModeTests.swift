@@ -1,7 +1,4 @@
-//
-//  AppearanceModeTests.swift
-//  Launch ControlTests
-//
+
 
 import SwiftUI
 import Testing

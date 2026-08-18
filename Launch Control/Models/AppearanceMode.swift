@@ -1,7 +1,4 @@
-//
-//  AppearanceMode.swift
-//  Launch Control
-//
+
 
 import SwiftUI
 

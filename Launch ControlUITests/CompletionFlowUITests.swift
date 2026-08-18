@@ -1,7 +1,3 @@
-//
-//  CompletionFlowUITests.swift
-//  Launch ControlUITests
-//
 
 import XCTest
 
@@ -29,8 +25,11 @@ final class CompletionFlowUITests: XCTestCase {
         // up with a reliably queryable, hittable element immediately after paging in
         // in this suite's simulator environment (a render-timing quirk seen
         // repeatedly with this pager during development, not specific to this test).
+        
+        // init the monthly view
         let monthlyHeader = app.row(containing: "Progress over 4 weeks")
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.90)).tap()
+        // checks first to make sure monthly view works
         XCTAssertTrue(monthlyHeader.waitForExistence(timeout: 3), "Toggling should switch to the monthly view")
 
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.90)).tap()

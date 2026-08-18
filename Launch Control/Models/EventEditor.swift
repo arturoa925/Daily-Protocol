@@ -1,7 +1,3 @@
-//
-//  EventEditor.swift
-//  Launch Control
-//
 
 import Foundation
 import Observation

@@ -1,7 +1,4 @@
-//
-//  SettingsUITests.swift
-//  Launch ControlUITests
-//
+
 
 import XCTest
 

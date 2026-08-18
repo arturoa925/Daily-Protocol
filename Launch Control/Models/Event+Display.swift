@@ -1,7 +1,4 @@
-//
-//  Event+Display.swift
-//  Launch Control
-//
+
 
 import Foundation
 import UserNotifications

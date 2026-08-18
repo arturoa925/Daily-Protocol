@@ -1,7 +1,4 @@
-//
-//  UITestSupport.swift
-//  Launch ControlUITests
-//
+
 
 import XCTest
 

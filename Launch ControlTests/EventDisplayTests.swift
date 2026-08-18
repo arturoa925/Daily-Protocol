@@ -1,7 +1,4 @@
-//
-//  EventDisplayTests.swift
-//  Launch ControlTests
-//
+
 
 import Foundation
 import Testing

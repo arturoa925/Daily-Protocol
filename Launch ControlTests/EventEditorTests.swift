@@ -1,7 +1,4 @@
-//
-//  EventEditorTests.swift
-//  Launch ControlTests
-//
+
 
 import Foundation
 import SwiftData

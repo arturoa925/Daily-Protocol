@@ -1,9 +1,4 @@
-//
-//  Launch_ControlUITestsLaunchTests.swift
-//  Launch ControlUITests
-//
-//  Created by Arturo Ayala on 3/17/26.
-//
+
 
 import XCTest
 
