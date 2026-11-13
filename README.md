@@ -2,6 +2,8 @@
 
 A focused daily planner for iPhone, built with **SwiftUI** and **SwiftData**. Plan what you're getting done today, check things off with a swipe, keep a streak going, and see how your week and month are tracking. You can also do it hands-free through **Siri and Shortcuts**.
 
+**Case study:** [How Launch Control is designed and built](https://arturoa925.github.io/projects/launch-control/) on my portfolio, covering the architecture, code decisions and trade-offs.
+
 > The repository is named `Daily-Protocol`. The app and Xcode project are named **Launch Control**.
 
 ---
