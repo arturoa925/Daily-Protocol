@@ -39,6 +39,15 @@ Reminders are scheduled with `UNCalendarNotificationTrigger` and use a custom no
 | Mark Event Complete | "Mark *[event]* done in Launch Control" |
 | Remove Event | "Remove *[event]* in Launch Control" |
 | Today's Events | "What do I have today in Launch Control" |
+| Plan Something | "Plan something in Launch Control", then say it naturally: *"dentist next Tuesday, bring my insurance card"* |
+| Ask About My Plan | "Ask Launch Control about my plan", then *"What should I tackle first?"* |
+
+#### On-device intelligence (Foundation Models)
+The last two intents use Apple's **Foundation Models** framework, so the language model runs entirely on-device and the app's privacy promise (no network calls) still holds.
+
+- **Plan Something** uses guided generation (`@Generable`) to turn a sentence into a typed draft: title, day, category, notes. The model only outputs *days from today*; Swift does the date math, since LLMs are unreliable at calendar arithmetic. Output is validated by `EventDraft` (trimmed, clamped to a year, categories restricted to the ones the app has).
+- **Ask About My Plan** uses tool calling. The model can call two **read-only** tools (`eventsOnDay`, `progress`) to ground its answer in real data. It has no write access, so a misheard question can't change your events.
+- **Graceful fallback.** If Apple Intelligence is unavailable or the model errors, `EventDraftParser` (a deterministic keyword parser) handles capture, so Siri still works on every supported device.
 
 Events are exposed to Siri as an `AppEntity` with an `EntityQuery` / `EntityStringQuery`, so Siri can suggest today's open events and search events by title.
 
@@ -87,6 +96,9 @@ Launch Control/
 │   ├── CompletionCalculator.swift
 │   ├── AppearanceMode.swift
 │   └── ActionButtonSide.swift
+├── AI/
+│   ├── EventDraft.swift         # Validated draft + offline fallback parser
+│   └── LaunchControlAssistant.swift  # Foundation Models: @Generable, tools
 ├── Features/
 │   ├── Protocol/                # Today
 │   ├── Calendar/
@@ -139,7 +151,7 @@ open "Launch Control.xcodeproj"
 
 ## Tech Stack
 
-SwiftUI · SwiftData · App Intents · UserNotifications · Swift Concurrency (actors) · OSLog · Swift Testing · XCUITest
+SwiftUI · SwiftData · App Intents · Foundation Models · UserNotifications · Swift Concurrency (actors) · OSLog · Swift Testing · XCUITest
 
 ---
 

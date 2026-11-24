@@ -7,7 +7,7 @@ import Foundation
 // Actor-isolated container cache — safely callable from any async context,
 // including the nonisolated EntityQuery/EntityStringQuery protocol methods
 // that AppIntents invokes outside the main actor.
-private actor IntentContainer {
+actor IntentContainer {
     static let shared = IntentContainer()
     private var container: ModelContainer?
 
@@ -247,6 +247,51 @@ struct TodaysEventsIntent: AppIntent {
 
 
 
+struct AddEventFromSentenceIntent: AppIntent {
+    static var title: LocalizedStringResource = "Plan Something"
+    static var description = IntentDescription("Describe an event in your own words and Launch Control files it under the right day and category, using on-device intelligence.")
+    static var openAppWhenRun = false
+
+    @Parameter(title: "What to plan", requestValueDialog: "What would you like to plan?")
+    var sentence: String
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let draft = await LaunchControlAssistant.draftEvent(from: sentence)
+        guard !draft.title.isEmpty else {
+            throw $sentence.needsValueError("I didn't catch what to plan. What would you like to add?")
+        }
+
+        let context = ModelContext(try await IntentContainer.shared.get())
+        context.insert(Event(
+            title: draft.title,
+            date: draft.resolvedDate(),
+            notes: draft.notes,
+            category: draft.category
+        ))
+        try context.save()
+
+        let category = draft.category.isEmpty ? "" : " under \(draft.category)"
+        return .result(dialog: "Added \"\(draft.title)\" for \(draft.spokenDay())\(category).")
+    }
+}
+
+
+
+struct AskLaunchControlIntent: AppIntent {
+    static var title: LocalizedStringResource = "Ask About My Plan"
+    static var description = IntentDescription("Ask a question about your events and progress, like what to tackle first or how your week is going.")
+    static var openAppWhenRun = false
+
+    @Parameter(title: "Question", requestValueDialog: "What would you like to know about your plan?")
+    var question: String
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let answer = await LaunchControlAssistant.answer(question)
+        return .result(dialog: "\(answer)")
+    }
+}
+
+
 struct LaunchControlShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -287,6 +332,24 @@ struct LaunchControlShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Today's Events",
             systemImageName: "calendar"
+        )
+        AppShortcut(
+            intent: AddEventFromSentenceIntent(),
+            phrases: [
+                "Plan something in \(.applicationName)",
+                "Plan an event in \(.applicationName)"
+            ],
+            shortTitle: "Plan Something",
+            systemImageName: "sparkles"
+        )
+        AppShortcut(
+            intent: AskLaunchControlIntent(),
+            phrases: [
+                "Ask \(.applicationName) about my plan",
+                "How am I doing in \(.applicationName)"
+            ],
+            shortTitle: "Ask About My Plan",
+            systemImageName: "questionmark.bubble"
         )
     }
 }
