@@ -11,6 +11,9 @@ jobs:
   test:
     runs-on: macos-26
     timeout-minutes: 40
+    env:
+      # Same simulator the README uses; present on the runner image.
+      SIM_NAME: iPhone 17
     steps:
       - uses: actions/checkout@v4
 
@@ -20,11 +23,6 @@ jobs:
           echo "Using $XCODE"
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-
-      - name: Pick an iPhone simulator
-        run: |
-          NAME=$(xcrun simctl list devices available | grep -oE 'iPhone [0-9]+( Pro)?( Max)?' | sort -u | head -1)
-          echo "SIM_NAME=$NAME" | tee -a "$GITHUB_ENV"
 
       - name: Build and run unit tests
         run: |
