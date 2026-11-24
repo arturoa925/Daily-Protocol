@@ -41,6 +41,9 @@ Reminders are scheduled with `UNCalendarNotificationTrigger` and use a custom no
 | Today's Events | "What do I have today in Launch Control" |
 | Plan Something | "Plan something in Launch Control", then say it naturally: *"dentist next Tuesday, bring my insurance card"* |
 | Ask About My Plan | "Ask Launch Control about my plan", then *"What should I tackle first?"* |
+| Undo | "Undo that in Launch Control", "Scratch that…", "Never mind…", "Oops…" |
+
+**Undo** reverses your last Siri add, complete, or remove (a removed event is restored in full). It remembers only one action, for 10 minutes, so a stray "undo" later can't change anything. State lives in `LastActionStore` in the App Group.
 
 #### On-device intelligence (Foundation Models)
 The last two intents use Apple's **Foundation Models** framework, so the language model runs entirely on-device and the app's privacy promise (no network calls) still holds.

@@ -43,6 +43,7 @@ struct AddTodayEventIntent: AppIntent {
         let event = Event(title: eventTitle, date: Date())
         context.insert(event)
         try context.save()
+        LastActionStore.shared.record(.added(event.eventID))
         return .result(dialog: "Added \"\(eventTitle)\" to today in Launch Control.")
     }
 }
@@ -148,6 +149,7 @@ struct MarkEventCompleteIntent: AppIntent {
         }
         match.isCompleted = true
         try context.save()
+        LastActionStore.shared.record(.completed(match.eventID))
         return .result(dialog: "Marked \"\(match.title)\" as complete.")
     }
 }
@@ -173,8 +175,10 @@ struct RemoveTodayEventIntent: AppIntent {
             throw $event.needsValueError("That event wasn't found.")
         }
         let title = match.title
+        let snapshot = EventSnapshot(match)
         context.delete(match)
         try context.save()
+        LastActionStore.shared.record(.removed(snapshot))
         return .result(dialog: "Removed \"\(title)\" from Launch Control.")
     }
 }
@@ -262,14 +266,16 @@ struct AddEventFromSentenceIntent: AppIntent {
         }
 
         let context = ModelContext(try await IntentContainer.shared.get())
-        context.insert(Event(
+        let event = Event(
             title: draft.title,
             date: draft.resolvedDate(),
             time: draft.resolvedTime(),
             notes: draft.notes,
             category: draft.category
-        ))
+        )
+        context.insert(event)
         try context.save()
+        LastActionStore.shared.record(.added(event.eventID))
 
         let category = draft.category.isEmpty ? "" : " under \(draft.category)"
         return .result(dialog: "Added \"\(draft.title)\" for \(draft.spokenWhen())\(category).")
@@ -289,6 +295,54 @@ struct AskLaunchControlIntent: AppIntent {
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let answer = await LaunchControlAssistant.answer(question)
         return .result(dialog: "\(answer)")
+    }
+}
+
+
+struct UndoLastActionIntent: AppIntent {
+    static var title: LocalizedStringResource = "Undo"
+    static var description = IntentDescription("Reverse the last thing you added, completed or removed with Siri in Launch Control.")
+    static var openAppWhenRun = false
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let action = LastActionStore.shared.take() else {
+            return .result(dialog: "There's nothing recent to undo.")
+        }
+        let context = ModelContext(try await IntentContainer.shared.get())
+
+        func find(_ id: UUID) throws -> Event? {
+            var descriptor = FetchDescriptor<Event>(predicate: #Predicate<Event> { $0.eventID == id })
+            descriptor.fetchLimit = 1
+            return try context.fetch(descriptor).first
+        }
+
+        switch action {
+        case .added(let id):
+            guard let event = try find(id) else {
+                return .result(dialog: "That event is already gone.")
+            }
+            let title = event.title
+            event.removePendingNotification()
+            context.delete(event)
+            try context.save()
+            return .result(dialog: "Undone. I removed \"\(title)\".")
+
+        case .completed(let id):
+            guard let event = try find(id) else {
+                return .result(dialog: "That event is already gone.")
+            }
+            event.isCompleted = false
+            try context.save()
+            return .result(dialog: "Undone. \"\(event.title)\" is marked as not done again.")
+
+        case .removed(let snapshot):
+            guard try find(snapshot.eventID) == nil else {
+                return .result(dialog: "\"\(snapshot.title)\" is already back.")
+            }
+            context.insert(snapshot.makeEvent())
+            try context.save()
+            return .result(dialog: "Undone. I restored \"\(snapshot.title)\".")
+        }
     }
 }
 
@@ -356,6 +410,23 @@ struct LaunchControlShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Ask About My Plan",
             systemImageName: "questionmark.bubble"
+        )
+        AppShortcut(
+            intent: UndoLastActionIntent(),
+            phrases: [
+                "Undo in \(.applicationName)",
+                "Undo that in \(.applicationName)",
+                "Undo last action in \(.applicationName)",
+                "Undo my last change in \(.applicationName)",
+                "Cancel that in \(.applicationName)",
+                "Scratch that in \(.applicationName)",
+                "Never mind in \(.applicationName)",
+                "Take that back in \(.applicationName)",
+                "Oops in \(.applicationName)",
+                "That was wrong in \(.applicationName)"
+            ],
+            shortTitle: "Undo",
+            systemImageName: "arrow.uturn.backward"
         )
     }
 }
