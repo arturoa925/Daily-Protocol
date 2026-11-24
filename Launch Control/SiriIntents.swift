@@ -176,6 +176,7 @@ struct RemoveTodayEventIntent: AppIntent {
         }
         let title = match.title
         let snapshot = EventSnapshot(match)
+        match.removePendingNotification()
         context.delete(match)
         try context.save()
         LastActionStore.shared.record(.removed(snapshot))
@@ -253,7 +254,7 @@ struct TodaysEventsIntent: AppIntent {
 
 struct AddEventFromSentenceIntent: AppIntent {
     static var title: LocalizedStringResource = "Plan Something"
-    static var description = IntentDescription("Describe an event in your own words and Launch Control files it under the right day and category, using on-device intelligence.")
+    static var description = IntentDescription("Describe an event in your own words and Launch Control files it under the right day, time and category, and sets a reminder if you give a time or ask for one.")
     static var openAppWhenRun = false
 
     @Parameter(title: "What to plan", requestValueDialog: "What would you like to plan? For example, dentist tomorrow at 3pm.")
@@ -266,19 +267,39 @@ struct AddEventFromSentenceIntent: AppIntent {
         }
 
         let context = ModelContext(try await IntentContainer.shared.get())
+        let reminder = draft.reminderDate()
         let event = Event(
             title: draft.title,
             date: draft.resolvedDate(),
             time: draft.resolvedTime(),
             notes: draft.notes,
-            category: draft.category
+            category: draft.category,
+            hasReminder: reminder != nil,
+            reminderDate: reminder
         )
         context.insert(event)
         try context.save()
         LastActionStore.shared.record(.added(event.eventID))
 
+        var reminderNote = ""
+        if let reminder {
+            let error = await NotificationScheduler.scheduleNotification(
+                for: event.eventID.uuidString, title: draft.title, reminderDate: reminder)
+            if error == nil {
+                reminderNote = " I'll remind you at \(reminder.formatted(.dateTime.hour().minute()))."
+            } else {
+                // Don't leave the app showing a reminder that will never fire.
+                event.hasReminder = false
+                event.reminderDate = nil
+                try context.save()
+                reminderNote = " I couldn't set the reminder because notifications are turned off for Launch Control."
+            }
+        } else if draft.wantsReminder {
+            reminderNote = " That time has already passed, so I didn't set a reminder."
+        }
+
         let category = draft.category.isEmpty ? "" : " under \(draft.category)"
-        return .result(dialog: "Added \"\(draft.title)\" for \(draft.spokenWhen())\(category).")
+        return .result(dialog: "Added \"\(draft.title)\" for \(draft.spokenWhen())\(category).\(reminderNote)")
     }
 }
 
@@ -341,6 +362,10 @@ struct UndoLastActionIntent: AppIntent {
             }
             context.insert(snapshot.makeEvent())
             try context.save()
+            if snapshot.hasReminder, let reminder = snapshot.reminderDate, reminder > Date() {
+                _ = await NotificationScheduler.scheduleNotification(
+                    for: snapshot.eventID.uuidString, title: snapshot.title, reminderDate: reminder)
+            }
             return .result(dialog: "Undone. I restored \"\(snapshot.title)\".")
         }
     }

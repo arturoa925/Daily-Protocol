@@ -33,7 +33,8 @@ enum LaunchControlAssistant {
             let generated = response.content
             let draft = EventDraft(title: generated.title, dayOffset: generated.dayOffset,
                                    hour: generated.hour >= 0 ? generated.hour : nil, minute: generated.minute,
-                                   category: generated.category, notes: generated.notes)
+                                   category: generated.category, notes: generated.notes,
+                                   wantsReminder: generated.wantsReminder)
             return draft.title.isEmpty ? EventDraftParser.parse(sentence, now: now) : draft
         } catch {
             return EventDraftParser.parse(sentence, now: now)
@@ -85,6 +86,9 @@ struct GeneratedEventDraft {
 
     @Guide(description: "Best-fitting category, or None", .anyOf(["Work", "Health", "Education", "Personal", "Social", "None"]))
     var category: String
+
+    @Guide(description: "True only if the user asked to be reminded or notified")
+    var wantsReminder: Bool
 
     @Guide(description: "Extra details the user mentioned, or an empty string")
     var notes: String

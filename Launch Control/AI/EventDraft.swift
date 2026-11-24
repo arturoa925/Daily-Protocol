@@ -12,15 +12,17 @@ struct EventDraft: Equatable {
     var minute: Int
     var category: String
     var notes: String
+    var wantsReminder: Bool
 
     /// Cleans untrusted input (model output or parsed text) into a safe draft:
     /// trims text, clamps the offset to today...a year out, and only keeps
     /// categories the app actually has.
-    init(title: String, dayOffset: Int, hour: Int? = nil, minute: Int = 0, category: String = "", notes: String = "") {
+    init(title: String, dayOffset: Int, hour: Int? = nil, minute: Int = 0, category: String = "", notes: String = "", wantsReminder: Bool = false) {
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         self.dayOffset = min(max(dayOffset, 0), Self.maxDayOffset)
         self.hour = hour.flatMap { (0...23).contains($0) ? $0 : nil }
         self.minute = min(max(minute, 0), 59)
+        self.wantsReminder = wantsReminder
         self.category = EventEditor.defaultCategories
             .first { $0.caseInsensitiveCompare(category.trimmingCharacters(in: .whitespaces)) == .orderedSame } ?? ""
         self.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -36,6 +38,20 @@ struct EventDraft: Equatable {
     func resolvedTime(calendar: Calendar = .current, now: Date = Date()) -> Date? {
         guard let hour else { return nil }
         return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: resolvedDate(calendar: calendar, now: now))
+    }
+
+    static let defaultReminderHour = 9
+
+    /// When to notify, or nil for no reminder. A stated time or an explicit "remind me" both
+    /// ask for one; with no time it fires at 9 AM. A moment that has already passed gets none,
+    /// since the system would never deliver it.
+    func reminderDate(calendar: Calendar = .current, now: Date = Date()) -> Date? {
+        guard wantsReminder || hour != nil else { return nil }
+        let target = resolvedTime(calendar: calendar, now: now)
+            ?? calendar.date(bySettingHour: Self.defaultReminderHour, minute: 0, second: 0,
+                             of: resolvedDate(calendar: calendar, now: now))
+        guard let target, target > now else { return nil }
+        return target
     }
 
     func spokenWhen(calendar: Calendar = .current, now: Date = Date()) -> String {
@@ -86,7 +102,9 @@ enum EventDraftParser {
         }
 
         let title = cleanedTitle(working, fallback: text)
-        return EventDraft(title: title, dayOffset: offset, hour: hour, minute: minute, category: category(for: title))
+        let wantsReminder = text.range(of: #"\bremind(er)?\b"#, options: [.regularExpression, .caseInsensitive]) != nil
+        return EventDraft(title: title, dayOffset: offset, hour: hour, minute: minute,
+                          category: category(for: title), wantsReminder: wantsReminder)
     }
 
     private static func dayPhrase(in text: String, calendar: Calendar, now: Date) -> (Range<String.Index>, Int)? {

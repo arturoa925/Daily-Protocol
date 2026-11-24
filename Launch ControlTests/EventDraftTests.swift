@@ -122,4 +122,40 @@ struct EventDraftTests {
         let draft = EventDraftParser.parse("Do 3 sets of squats", calendar: calendar, now: now)
         #expect(draft.hour == nil)
     }
+
+    // MARK: - Reminders
+
+    @Test func noTimeAndNoRemindMeMeansNoReminder() {
+        #expect(EventDraft(title: "x", dayOffset: 1).reminderDate(calendar: calendar, now: now) == nil)
+    }
+
+    @Test func aStatedTimeImpliesAReminderAtThatTime() {
+        let draft = EventDraft(title: "x", dayOffset: 1, hour: 15, minute: 30)
+        let expected = calendar.date(from: DateComponents(year: 2026, month: 11, day: 25, hour: 15, minute: 30))!
+        #expect(draft.reminderDate(calendar: calendar, now: now) == expected)
+    }
+
+    @Test func remindMeWithoutATimeFiresAtNineAM() {
+        let draft = EventDraft(title: "x", dayOffset: 1, wantsReminder: true)
+        let expected = calendar.date(from: DateComponents(year: 2026, month: 11, day: 25, hour: 9))!
+        #expect(draft.reminderDate(calendar: calendar, now: now) == expected)
+    }
+
+    @Test func remindersInThePastAreDropped() {
+        // "now" is noon, so 9 AM today and 8 AM today have both passed.
+        #expect(EventDraft(title: "x", dayOffset: 0, wantsReminder: true).reminderDate(calendar: calendar, now: now) == nil)
+        #expect(EventDraft(title: "x", dayOffset: 0, hour: 8).reminderDate(calendar: calendar, now: now) == nil)
+        #expect(EventDraft(title: "x", dayOffset: 0, hour: 18).reminderDate(calendar: calendar, now: now) != nil)
+    }
+
+    @Test func parserDetectsRemindMe() {
+        let draft = EventDraftParser.parse("Remind me to call the landlord tomorrow", calendar: calendar, now: now)
+        #expect(draft.wantsReminder)
+        #expect(draft.title == "Call the landlord")
+        #expect(draft.dayOffset == 1)
+    }
+
+    @Test func parserLeavesWantsReminderOffOtherwise() {
+        #expect(!EventDraftParser.parse("Call the landlord tomorrow", calendar: calendar, now: now).wantsReminder)
+    }
 }
