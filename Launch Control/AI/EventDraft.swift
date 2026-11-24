@@ -101,10 +101,18 @@ enum EventDraftParser {
             working.removeSubrange(range)
         }
 
-        let title = cleanedTitle(working, fallback: text)
+        // Tidy what's left once the date/time words are cut out, drop a trailing
+        // "remind me", and treat anything after the first comma as notes.
+        let normalized = working
+            .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+,"#, with: ",", options: .regularExpression)
+            .replacingOccurrences(of: #"[,\s]*\bremind me\b[,\s]*$"#, with: "", options: [.regularExpression, .caseInsensitive])
+        let parts = normalized.split(separator: ",", maxSplits: 1, omittingEmptySubsequences: false)
+        let title = cleanedTitle(parts.first.map(String.init) ?? "", fallback: text)
+        let notes = parts.count > 1 ? String(parts[1]) : ""
         let wantsReminder = text.range(of: #"\bremind(er)?\b"#, options: [.regularExpression, .caseInsensitive]) != nil
         return EventDraft(title: title, dayOffset: offset, hour: hour, minute: minute,
-                          category: category(for: title), wantsReminder: wantsReminder)
+                          category: category(for: title), notes: notes, wantsReminder: wantsReminder)
     }
 
     private static func dayPhrase(in text: String, calendar: Calendar, now: Date) -> (Range<String.Index>, Int)? {
@@ -159,7 +167,7 @@ enum EventDraftParser {
     private static func cleanedTitle(_ text: String, fallback: String) -> String {
         var result = text
         let fillers = [#"^\s*(please\s+)?(add|schedule|create|plan|remind me to)\s+(an?\s+|the\s+)?"#,
-                       #"\s+(to|on|for)\s*$"#,
+                       #"\s+(to|on|for|by|at|before|until|from)\s*$"#,
                        #"\s+(to|on|for)\s+my\s+(list|plan|schedule)\s*$"#]
         for filler in fillers {
             if let range = result.range(of: filler, options: [.regularExpression, .caseInsensitive]) {

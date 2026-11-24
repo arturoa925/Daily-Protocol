@@ -158,4 +158,31 @@ struct EventDraftTests {
     @Test func parserLeavesWantsReminderOffOtherwise() {
         #expect(!EventDraftParser.parse("Call the landlord tomorrow", calendar: calendar, now: now).wantsReminder)
     }
+
+    // MARK: - Regressions found by running phrasings the first tests didn't cover
+
+    @Test func parserSplitsExtraDetailIntoNotes() {
+        let draft = EventDraftParser.parse("Add dentist appointment next Tuesday, bring insurance card", calendar: calendar, now: now)
+        #expect(draft.title == "Dentist appointment")
+        #expect(draft.notes == "bring insurance card")
+        #expect(draft.dayOffset == 7)
+    }
+
+    @Test func parserDropsATrailingRemindMe() {
+        let draft = EventDraftParser.parse("Pay rent tomorrow, remind me", calendar: calendar, now: now)
+        #expect(draft.title == "Pay rent")
+        #expect(draft.wantsReminder)
+    }
+
+    @Test func parserStripsRemindMePrefixEvenWhenTheTimeSitsInTheMiddle() {
+        let draft = EventDraftParser.parse("Remind me tomorrow at 8am to take vitamins", calendar: calendar, now: now)
+        #expect(draft.title == "Take vitamins")
+        #expect(draft.hour == 8)
+    }
+
+    @Test func parserDropsADanglingPreposition() {
+        let draft = EventDraftParser.parse("Finish presentation by Friday", calendar: calendar, now: now)
+        #expect(draft.title == "Finish presentation")
+        #expect(draft.dayOffset == 3)
+    }
 }
