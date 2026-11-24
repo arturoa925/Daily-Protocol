@@ -1,0 +1,54 @@
+name: Build and test
+
+# Runs on pushes to the Claude working branch and on demand. Unit tests only:
+# the UI tests are slow and need a stable simulator, so run those locally with Cmd+U.
+on:
+  push:
+    branches: [claude/great-keller-23cv28]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Find an iPhone 17 simulator
+        # The newest Xcode can be ahead of the installed simulator runtimes, so
+        # "OS:latest" may match nothing. Pick the device on the newest runtime that exists.
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          devices = json.load(sys.stdin)['devices']
+          found = sorted((runtime, d['udid']) for runtime, ds in devices.items() if 'iOS' in runtime
+                         for d in ds if d['name'] == 'iPhone 17')
+          print(found[-1][1])
+          ")
+          echo "Using simulator $UDID"
+          echo "SIM_UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Build and run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project "Launch Control.xcodeproj" \
+            -scheme "Launch Control" \
+            -destination "platform=iOS Simulator,id=$SIM_UDID" \
+            -only-testing:"Launch ControlTests" \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build.log | tail -n 200
+
+      - name: Upload full log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log

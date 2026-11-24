@@ -1,5 +1,6 @@
 
 import AppIntents
+import CoreSpotlight
 import SwiftData
 import Foundation
 
@@ -7,7 +8,7 @@ import Foundation
 // Actor-isolated container cache — safely callable from any async context,
 // including the nonisolated EntityQuery/EntityStringQuery protocol methods
 // that AppIntents invokes outside the main actor.
-private actor IntentContainer {
+actor IntentContainer {
     static let shared = IntentContainer()
     private var container: ModelContainer?
 
@@ -43,13 +44,15 @@ struct AddTodayEventIntent: AppIntent {
         let event = Event(title: eventTitle, date: Date())
         context.insert(event)
         try context.save()
+        LastActionStore.shared.record(.added(event.eventID))
+        await EventSpotlightIndexer.index([event])
         return .result(dialog: "Added \"\(eventTitle)\" to today in Launch Control.")
     }
 }
 
 
 
-struct EventEntity: AppEntity {
+struct EventEntity: AppEntity, IndexedEntity {
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Event"
     static var defaultQuery = EventQuery()
 
@@ -63,6 +66,19 @@ struct EventEntity: AppEntity {
         self.title = title
         self.date = date
         self.isCompleted = isCompleted
+    }
+
+    init(_ event: Event) {
+        self.init(id: event.eventID, title: event.title, date: event.date, isCompleted: event.isCompleted)
+    }
+
+    /// What Spotlight shows and searches on for this event.
+    var attributeSet: CSSearchableItemAttributeSet {
+        let set = CSSearchableItemAttributeSet()
+        set.displayName = title
+        set.contentDescription = "\(date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())) · Launch Control"
+        set.keywords = [title, "event", "task", "plan"]
+        return set
     }
 
     var displayRepresentation: DisplayRepresentation {
@@ -148,6 +164,7 @@ struct MarkEventCompleteIntent: AppIntent {
         }
         match.isCompleted = true
         try context.save()
+        LastActionStore.shared.record(.completed(match.eventID))
         return .result(dialog: "Marked \"\(match.title)\" as complete.")
     }
 }
@@ -173,8 +190,12 @@ struct RemoveTodayEventIntent: AppIntent {
             throw $event.needsValueError("That event wasn't found.")
         }
         let title = match.title
+        let snapshot = EventSnapshot(match)
+        match.removePendingNotification()
         context.delete(match)
         try context.save()
+        LastActionStore.shared.record(.removed(snapshot))
+        await EventSpotlightIndexer.remove(ids: [snapshot.eventID])
         return .result(dialog: "Removed \"\(title)\" from Launch Control.")
     }
 }
@@ -247,6 +268,140 @@ struct TodaysEventsIntent: AppIntent {
 
 
 
+struct AddEventFromSentenceIntent: AppIntent {
+    static var title: LocalizedStringResource = "Plan Something"
+    static var description = IntentDescription("Describe an event in your own words and Launch Control files it under the right day, time and category, and sets a reminder if you give a time or ask for one.")
+    static var openAppWhenRun = false
+
+    static var searchKeywords: [LocalizedStringResource] = ["plan", "add", "schedule", "remind", "event", "task"]
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Plan \(\.$sentence)")
+    }
+
+    @Parameter(title: "What to plan", requestValueDialog: "What would you like to plan? For example, dentist tomorrow at 3pm.")
+    var sentence: String
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let draft = await LaunchControlAssistant.draftEvent(from: sentence)
+        guard !draft.title.isEmpty else {
+            throw $sentence.needsValueError("I didn't catch what to plan. What would you like to add?")
+        }
+
+        let context = ModelContext(try await IntentContainer.shared.get())
+        let reminder = draft.reminderDate()
+        let event = Event(
+            title: draft.title,
+            date: draft.resolvedDate(),
+            time: draft.resolvedTime(),
+            notes: draft.notes,
+            category: draft.category,
+            hasReminder: reminder != nil,
+            reminderDate: reminder
+        )
+        context.insert(event)
+        try context.save()
+        LastActionStore.shared.record(.added(event.eventID))
+        await EventSpotlightIndexer.index([event])
+
+        var reminderNote = ""
+        if let reminder {
+            let error = await NotificationScheduler.scheduleNotification(
+                for: event.eventID.uuidString, title: draft.title, reminderDate: reminder)
+            if error == nil {
+                reminderNote = " I'll remind you at \(reminder.formatted(.dateTime.hour().minute()))."
+            } else {
+                // Don't leave the app showing a reminder that will never fire.
+                event.hasReminder = false
+                event.reminderDate = nil
+                try context.save()
+                reminderNote = " I couldn't set the reminder because notifications are turned off for Launch Control."
+            }
+        } else if draft.wantsReminder {
+            reminderNote = " That time has already passed, so I didn't set a reminder."
+        }
+
+        let category = draft.category.isEmpty ? "" : " under \(draft.category)"
+        return .result(dialog: "Added \"\(draft.title)\" for \(draft.spokenWhen())\(category).\(reminderNote)")
+    }
+}
+
+
+
+struct AskLaunchControlIntent: AppIntent {
+    static var title: LocalizedStringResource = "Ask About My Plan"
+    static var description = IntentDescription("Ask a question about your events and progress, like what to tackle first or how your week is going.")
+    static var openAppWhenRun = false
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Ask \(\.$question)")
+    }
+
+    @Parameter(title: "Question", requestValueDialog: "What would you like to know? For example, what should I do first today?")
+    var question: String
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let answer = await LaunchControlAssistant.answer(question)
+        return .result(dialog: "\(answer)")
+    }
+}
+
+
+struct UndoLastActionIntent: AppIntent {
+    static var title: LocalizedStringResource = "Undo"
+    static var description = IntentDescription("Reverse the last thing you added, completed or removed with Siri in Launch Control.")
+    static var openAppWhenRun = false
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard let action = LastActionStore.shared.take() else {
+            return .result(dialog: "There's nothing recent to undo.")
+        }
+        let context = ModelContext(try await IntentContainer.shared.get())
+
+        func find(_ id: UUID) throws -> Event? {
+            var descriptor = FetchDescriptor<Event>(predicate: #Predicate<Event> { $0.eventID == id })
+            descriptor.fetchLimit = 1
+            return try context.fetch(descriptor).first
+        }
+
+        switch action {
+        case .added(let id):
+            guard let event = try find(id) else {
+                return .result(dialog: "That event is already gone.")
+            }
+            let title = event.title
+            event.removePendingNotification()
+            context.delete(event)
+            try context.save()
+            await EventSpotlightIndexer.remove(ids: [id])
+            return .result(dialog: "Undone. I removed \"\(title)\".")
+
+        case .completed(let id):
+            guard let event = try find(id) else {
+                return .result(dialog: "That event is already gone.")
+            }
+            event.isCompleted = false
+            try context.save()
+            return .result(dialog: "Undone. \"\(event.title)\" is marked as not done again.")
+
+        case .removed(let snapshot):
+            guard try find(snapshot.eventID) == nil else {
+                return .result(dialog: "\"\(snapshot.title)\" is already back.")
+            }
+            let restored = snapshot.makeEvent()
+            context.insert(restored)
+            try context.save()
+            await EventSpotlightIndexer.index([restored])
+            if snapshot.hasReminder, let reminder = snapshot.reminderDate, reminder > Date() {
+                _ = await NotificationScheduler.scheduleNotification(
+                    for: snapshot.eventID.uuidString, title: snapshot.title, reminderDate: reminder)
+            }
+            return .result(dialog: "Undone. I restored \"\(snapshot.title)\".")
+        }
+    }
+}
+
+
 struct LaunchControlShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -287,6 +442,46 @@ struct LaunchControlShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Today's Events",
             systemImageName: "calendar"
+        )
+        AppShortcut(
+            intent: AddEventFromSentenceIntent(),
+            phrases: [
+                "Plan something in \(.applicationName)",
+                "Plan an event in \(.applicationName)",
+                "Add to my plan in \(.applicationName)",
+                "Schedule something in \(.applicationName)",
+                "Remind me in \(.applicationName)"
+            ],
+            shortTitle: "Plan Something",
+            systemImageName: "sparkles"
+        )
+        AppShortcut(
+            intent: AskLaunchControlIntent(),
+            phrases: [
+                "Ask \(.applicationName) about my plan",
+                "How am I doing in \(.applicationName)",
+                "What should I do first in \(.applicationName)",
+                "How's my week in \(.applicationName)"
+            ],
+            shortTitle: "Ask About My Plan",
+            systemImageName: "questionmark.bubble"
+        )
+        AppShortcut(
+            intent: UndoLastActionIntent(),
+            phrases: [
+                "Undo in \(.applicationName)",
+                "Undo that in \(.applicationName)",
+                "Undo last action in \(.applicationName)",
+                "Undo my last change in \(.applicationName)",
+                "Cancel that in \(.applicationName)",
+                "Scratch that in \(.applicationName)",
+                "Never mind in \(.applicationName)",
+                "Take that back in \(.applicationName)",
+                "Oops in \(.applicationName)",
+                "That was wrong in \(.applicationName)"
+            ],
+            shortTitle: "Undo",
+            systemImageName: "arrow.uturn.backward"
         )
     }
 }

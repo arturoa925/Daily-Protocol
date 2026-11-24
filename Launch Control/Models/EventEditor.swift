@@ -111,6 +111,8 @@ final class EventEditor {
 
     func delete(_ event: Event, from context: ModelContext) {
         event.removePendingNotification()
+        let id = event.eventID
         context.delete(event)
+        Task { await EventSpotlightIndexer.remove(ids: [id]) }
     }
 }

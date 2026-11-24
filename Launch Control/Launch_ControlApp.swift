@@ -9,6 +9,8 @@ import os
 struct Launch_ControlApp: App {
     @AppStorage("appAppearance") private var appearanceRaw: String = AppearanceMode.system.rawValue
 
+    @Environment(\.scenePhase) private var scenePhase
+
     var sharedModelContainer: ModelContainer
     private let notificationDelegate: EventNotificationDelegate
 
@@ -83,6 +85,13 @@ struct Launch_ControlApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme((AppearanceMode(rawValue: appearanceRaw) ?? .system).colorScheme)
+                .task { await EventSpotlightIndexer.reindexUpcoming(in: sharedModelContainer) }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                let container = sharedModelContainer
+                Task { await EventSpotlightIndexer.reindexUpcoming(in: container) }
+            }
         }
         .modelContainer(sharedModelContainer)
     }

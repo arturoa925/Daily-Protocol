@@ -22,6 +22,15 @@ enum NotificationScheduler {
         UNUserNotificationCenter.current().setNotificationCategories([category])
     }
 
+    /// Async form for App Intents. Returns nil on success, or the error (denied permission, etc.).
+    static func scheduleNotification(for eventID: String, title: String, reminderDate: Date) async -> Error? {
+        await withCheckedContinuation { continuation in
+            scheduleNotification(for: eventID, title: title, reminderDate: reminderDate) { error in
+                continuation.resume(returning: error)
+            }
+        }
+    }
+
     static func scheduleNotification(for eventID: String, title: String, reminderDate: Date, completion: @escaping (Error?) -> Void) {
         let center = UNUserNotificationCenter.current()
 

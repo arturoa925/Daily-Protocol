@@ -39,6 +39,22 @@ Reminders are scheduled with `UNCalendarNotificationTrigger` and use a custom no
 | Mark Event Complete | "Mark *[event]* done in Launch Control" |
 | Remove Event | "Remove *[event]* in Launch Control" |
 | Today's Events | "What do I have today in Launch Control" |
+| Plan Something | "Plan something in Launch Control", then say it naturally: *"dentist next Tuesday, bring my insurance card"* |
+| Ask About My Plan | "Ask Launch Control about my plan", then *"What should I tackle first?"* |
+| Undo | "Undo that in Launch Control", "Scratch that…", "Never mind…", "Oops…" |
+
+**Undo** reverses your last Siri add, complete, or remove (a removed event is restored in full). It remembers only one action, for 10 minutes, so a stray "undo" later can't change anything. State lives in `LastActionStore` in the App Group.
+
+#### Action Button and Spotlight
+- **iPhone Action Button:** *Settings ▸ Action Button ▸ Shortcut ▸ Launch Control ▸ Plan Something*. One press asks what to plan, then files it. (A hardware setting the user picks; an app can't assign it. The in-app **Settings ▸ Siri & Shortcuts** section explains the steps.)
+- **Spotlight:** every Launch Control shortcut appears in Spotlight, and events are indexed as `IndexedEntity` items (`EventSpotlightIndexer`) for the window from 7 days ago to 60 days ahead. Search an event's title to find it. The index is refreshed at launch and when the app backgrounds, and updated on Siri add/remove/undo.
+
+#### On-device intelligence (Foundation Models)
+The last two intents use Apple's **Foundation Models** framework, so the language model runs entirely on-device and the app's privacy promise (no network calls) still holds.
+
+- **Plan Something** uses guided generation (`@Generable`) to turn a sentence into a typed draft: title, day, category, notes. The model only outputs *days from today*; Swift does the date math, since LLMs are unreliable at calendar arithmetic. Output is validated by `EventDraft` (trimmed, clamped to a year, categories restricted to the ones the app has).
+- **Ask About My Plan** uses tool calling. The model can call two **read-only** tools (`eventsOnDay`, `progress`) to ground its answer in real data. It has no write access, so a misheard question can't change your events.
+- **Graceful fallback.** If Apple Intelligence is unavailable or the model errors, `EventDraftParser` (a deterministic keyword parser) handles capture, so Siri still works on every supported device.
 
 Events are exposed to Siri as an `AppEntity` with an `EntityQuery` / `EntityStringQuery`, so Siri can suggest today's open events and search events by title.
 
@@ -87,6 +103,9 @@ Launch Control/
 │   ├── CompletionCalculator.swift
 │   ├── AppearanceMode.swift
 │   └── ActionButtonSide.swift
+├── AI/
+│   ├── EventDraft.swift         # Validated draft + offline fallback parser
+│   └── LaunchControlAssistant.swift  # Foundation Models: @Generable, tools
 ├── Features/
 │   ├── Protocol/                # Today
 │   ├── Calendar/
@@ -139,7 +158,7 @@ open "Launch Control.xcodeproj"
 
 ## Tech Stack
 
-SwiftUI · SwiftData · App Intents · UserNotifications · Swift Concurrency (actors) · OSLog · Swift Testing · XCUITest
+SwiftUI · SwiftData · App Intents · Foundation Models · UserNotifications · Swift Concurrency (actors) · OSLog · Swift Testing · XCUITest
 
 ---
 
