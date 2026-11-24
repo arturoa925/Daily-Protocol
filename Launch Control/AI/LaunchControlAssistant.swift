@@ -26,12 +26,13 @@ enum LaunchControlAssistant {
         let session = LanguageModelSession(instructions: """
             You turn a spoken request into one planner event. Today is \(today). \
             Express the day only as dayOffset, the number of days from today \
-            (0 = today, 1 = tomorrow). Never invent details the user did not say.
+            (0 = today, 1 = tomorrow). Use hour and minute in 24-hour time only if the user stated a time, otherwise hour is -1. Never invent details the user did not say.
             """)
         do {
             let response = try await session.respond(to: sentence, generating: GeneratedEventDraft.self)
             let generated = response.content
             let draft = EventDraft(title: generated.title, dayOffset: generated.dayOffset,
+                                   hour: generated.hour >= 0 ? generated.hour : nil, minute: generated.minute,
                                    category: generated.category, notes: generated.notes)
             return draft.title.isEmpty ? EventDraftParser.parse(sentence, now: now) : draft
         } catch {
@@ -75,6 +76,12 @@ struct GeneratedEventDraft {
 
     @Guide(description: "Days from today until the event: 0 is today, 1 is tomorrow", .range(0...365))
     var dayOffset: Int
+
+    @Guide(description: "Hour of day in 24-hour time if the user stated a time, else -1", .range(-1...23))
+    var hour: Int
+
+    @Guide(description: "Minute of the hour, 0 if no time was stated", .range(0...59))
+    var minute: Int
 
     @Guide(description: "Best-fitting category, or None", .anyOf(["Work", "Health", "Education", "Personal", "Social", "None"]))
     var category: String

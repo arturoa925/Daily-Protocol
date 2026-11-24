@@ -8,15 +8,19 @@ struct EventDraft: Equatable {
 
     var title: String
     var dayOffset: Int
+    var hour: Int?
+    var minute: Int
     var category: String
     var notes: String
 
     /// Cleans untrusted input (model output or parsed text) into a safe draft:
     /// trims text, clamps the offset to today...a year out, and only keeps
     /// categories the app actually has.
-    init(title: String, dayOffset: Int, category: String = "", notes: String = "") {
+    init(title: String, dayOffset: Int, hour: Int? = nil, minute: Int = 0, category: String = "", notes: String = "") {
         self.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         self.dayOffset = min(max(dayOffset, 0), Self.maxDayOffset)
+        self.hour = hour.flatMap { (0...23).contains($0) ? $0 : nil }
+        self.minute = min(max(minute, 0), 59)
         self.category = EventEditor.defaultCategories
             .first { $0.caseInsensitiveCompare(category.trimmingCharacters(in: .whitespaces)) == .orderedSame } ?? ""
         self.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -26,6 +30,18 @@ struct EventDraft: Equatable {
     /// date arithmetic. It only says "N days from today" and Swift does the math.
     func resolvedDate(calendar: Calendar = .current, now: Date = Date()) -> Date {
         calendar.date(byAdding: .day, value: dayOffset, to: now) ?? now
+    }
+
+    /// The time of day as a date on the event's day, or nil if the user gave no time.
+    func resolvedTime(calendar: Calendar = .current, now: Date = Date()) -> Date? {
+        guard let hour else { return nil }
+        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: resolvedDate(calendar: calendar, now: now))
+    }
+
+    func spokenWhen(calendar: Calendar = .current, now: Date = Date()) -> String {
+        let day = spokenDay(calendar: calendar, now: now)
+        guard let time = resolvedTime(calendar: calendar, now: now) else { return day }
+        return "\(day) at \(time.formatted(.dateTime.hour().minute()))"
     }
 
     func spokenDay(calendar: Calendar = .current, now: Date = Date()) -> String {
@@ -61,8 +77,16 @@ enum EventDraftParser {
             working.removeSubrange(range)
         }
 
+        var hour: Int?
+        var minute = 0
+        if let (range, h, m) = timePhrase(in: working) {
+            hour = h
+            minute = m
+            working.removeSubrange(range)
+        }
+
         let title = cleanedTitle(working, fallback: text)
-        return EventDraft(title: title, dayOffset: offset, category: category(for: title))
+        return EventDraft(title: title, dayOffset: offset, hour: hour, minute: minute, category: category(for: title))
     }
 
     private static func dayPhrase(in text: String, calendar: Calendar, now: Date) -> (Range<String.Index>, Int)? {
@@ -92,6 +116,26 @@ enum EventDraftParser {
             return (range, delta)
         }
         return nil
+    }
+
+    /// "at 3pm", "3:30 pm", "at noon". Only 12-hour forms with am/pm (or noon), so a bare
+    /// number like "3 sets of squats" is never mistaken for a time.
+    private static func timePhrase(in text: String) -> (Range<String.Index>, Int, Int)? {
+        if let range = text.range(of: #"\b(at\s+)?noon\b"#, options: [.regularExpression, .caseInsensitive]) {
+            return (range, 12, 0)
+        }
+        let pattern = #"\b(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let whole = Range(match.range, in: text),
+              let hourRange = Range(match.range(at: 1), in: text),
+              let meridiemRange = Range(match.range(at: 3), in: text),
+              var hour = Int(text[hourRange]), (1...12).contains(hour) else { return nil }
+        let minute = Range(match.range(at: 2), in: text).flatMap { Int(text[$0]) } ?? 0
+        guard (0...59).contains(minute) else { return nil }
+        let isPM = text[meridiemRange].lowercased() == "pm"
+        hour = (hour % 12) + (isPM ? 12 : 0)
+        return (whole, hour, minute)
     }
 
     private static func cleanedTitle(_ text: String, fallback: String) -> String {

@@ -252,7 +252,7 @@ struct AddEventFromSentenceIntent: AppIntent {
     static var description = IntentDescription("Describe an event in your own words and Launch Control files it under the right day and category, using on-device intelligence.")
     static var openAppWhenRun = false
 
-    @Parameter(title: "What to plan", requestValueDialog: "What would you like to plan?")
+    @Parameter(title: "What to plan", requestValueDialog: "What would you like to plan? For example, dentist tomorrow at 3pm.")
     var sentence: String
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
@@ -265,13 +265,14 @@ struct AddEventFromSentenceIntent: AppIntent {
         context.insert(Event(
             title: draft.title,
             date: draft.resolvedDate(),
+            time: draft.resolvedTime(),
             notes: draft.notes,
             category: draft.category
         ))
         try context.save()
 
         let category = draft.category.isEmpty ? "" : " under \(draft.category)"
-        return .result(dialog: "Added \"\(draft.title)\" for \(draft.spokenDay())\(category).")
+        return .result(dialog: "Added \"\(draft.title)\" for \(draft.spokenWhen())\(category).")
     }
 }
 
@@ -282,7 +283,7 @@ struct AskLaunchControlIntent: AppIntent {
     static var description = IntentDescription("Ask a question about your events and progress, like what to tackle first or how your week is going.")
     static var openAppWhenRun = false
 
-    @Parameter(title: "Question", requestValueDialog: "What would you like to know about your plan?")
+    @Parameter(title: "Question", requestValueDialog: "What would you like to know? For example, what should I do first today?")
     var question: String
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
@@ -337,7 +338,10 @@ struct LaunchControlShortcuts: AppShortcutsProvider {
             intent: AddEventFromSentenceIntent(),
             phrases: [
                 "Plan something in \(.applicationName)",
-                "Plan an event in \(.applicationName)"
+                "Plan an event in \(.applicationName)",
+                "Add to my plan in \(.applicationName)",
+                "Schedule something in \(.applicationName)",
+                "Remind me in \(.applicationName)"
             ],
             shortTitle: "Plan Something",
             systemImageName: "sparkles"
@@ -346,7 +350,9 @@ struct LaunchControlShortcuts: AppShortcutsProvider {
             intent: AskLaunchControlIntent(),
             phrases: [
                 "Ask \(.applicationName) about my plan",
-                "How am I doing in \(.applicationName)"
+                "How am I doing in \(.applicationName)",
+                "What should I do first in \(.applicationName)",
+                "How's my week in \(.applicationName)"
             ],
             shortTitle: "Ask About My Plan",
             systemImageName: "questionmark.bubble"
