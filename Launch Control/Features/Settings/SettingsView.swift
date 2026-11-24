@@ -1,9 +1,11 @@
 
+import AppIntents
 import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("appAppearance") private var appearanceRaw: String = AppearanceMode.system.rawValue
     @AppStorage("actionButtonSide") private var actionButtonSideRaw: String = ActionButtonSide.trailing.rawValue
+    @State private var showSiriTip = true
     // used to dismiss the sheet
     @Environment(\.dismiss) private var dismiss
 
@@ -55,6 +57,16 @@ struct SettingsView: View {
                     Text("Action Button")
                 } footer: {
                     Text("Choose which side of the screen the add and toggle buttons appear on.")
+                }
+
+                Section {
+                    SiriTipView(intent: AddEventFromSentenceIntent(), isVisible: $showSiriTip)
+                    ShortcutsLink()
+                } header: {
+                    Text("Siri & Shortcuts")
+                } footer: {
+                    // Not the in-app "Action Button" setting above: that moves the on-screen add button.
+                    Text("To use your iPhone's Action Button: open the Settings app, tap Action Button, choose Shortcut, then pick Launch Control and Plan Something. Events also show up when you search in Spotlight.")
                 }
             }
             .navigationTitle("Settings")

@@ -45,6 +45,10 @@ Reminders are scheduled with `UNCalendarNotificationTrigger` and use a custom no
 
 **Undo** reverses your last Siri add, complete, or remove (a removed event is restored in full). It remembers only one action, for 10 minutes, so a stray "undo" later can't change anything. State lives in `LastActionStore` in the App Group.
 
+#### Action Button and Spotlight
+- **iPhone Action Button:** *Settings ▸ Action Button ▸ Shortcut ▸ Launch Control ▸ Plan Something*. One press asks what to plan, then files it. (A hardware setting the user picks; an app can't assign it. The in-app **Settings ▸ Siri & Shortcuts** section explains the steps.)
+- **Spotlight:** every Launch Control shortcut appears in Spotlight, and events are indexed as `IndexedEntity` items (`EventSpotlightIndexer`) for the window from 7 days ago to 60 days ahead. Search an event's title to find it. The index is refreshed at launch and when the app backgrounds, and updated on Siri add/remove/undo.
+
 #### On-device intelligence (Foundation Models)
 The last two intents use Apple's **Foundation Models** framework, so the language model runs entirely on-device and the app's privacy promise (no network calls) still holds.
 

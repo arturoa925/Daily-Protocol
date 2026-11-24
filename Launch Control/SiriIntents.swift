@@ -1,5 +1,6 @@
 
 import AppIntents
+import CoreSpotlight
 import SwiftData
 import Foundation
 
@@ -44,13 +45,14 @@ struct AddTodayEventIntent: AppIntent {
         context.insert(event)
         try context.save()
         LastActionStore.shared.record(.added(event.eventID))
+        await EventSpotlightIndexer.index([event])
         return .result(dialog: "Added \"\(eventTitle)\" to today in Launch Control.")
     }
 }
 
 
 
-struct EventEntity: AppEntity {
+struct EventEntity: AppEntity, IndexedEntity {
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Event"
     static var defaultQuery = EventQuery()
 
@@ -64,6 +66,19 @@ struct EventEntity: AppEntity {
         self.title = title
         self.date = date
         self.isCompleted = isCompleted
+    }
+
+    init(_ event: Event) {
+        self.init(id: event.eventID, title: event.title, date: event.date, isCompleted: event.isCompleted)
+    }
+
+    /// What Spotlight shows and searches on for this event.
+    var attributeSet: CSSearchableItemAttributeSet {
+        let set = CSSearchableItemAttributeSet()
+        set.displayName = title
+        set.contentDescription = "\(date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())) · Launch Control"
+        set.keywords = [title, "event", "task", "plan"]
+        return set
     }
 
     var displayRepresentation: DisplayRepresentation {
@@ -180,6 +195,7 @@ struct RemoveTodayEventIntent: AppIntent {
         context.delete(match)
         try context.save()
         LastActionStore.shared.record(.removed(snapshot))
+        await EventSpotlightIndexer.remove(ids: [snapshot.eventID])
         return .result(dialog: "Removed \"\(title)\" from Launch Control.")
     }
 }
@@ -257,6 +273,12 @@ struct AddEventFromSentenceIntent: AppIntent {
     static var description = IntentDescription("Describe an event in your own words and Launch Control files it under the right day, time and category, and sets a reminder if you give a time or ask for one.")
     static var openAppWhenRun = false
 
+    static var searchKeywords: [LocalizedStringResource] = ["plan", "add", "schedule", "remind", "event", "task"]
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Plan \(\.$sentence)")
+    }
+
     @Parameter(title: "What to plan", requestValueDialog: "What would you like to plan? For example, dentist tomorrow at 3pm.")
     var sentence: String
 
@@ -280,6 +302,7 @@ struct AddEventFromSentenceIntent: AppIntent {
         context.insert(event)
         try context.save()
         LastActionStore.shared.record(.added(event.eventID))
+        await EventSpotlightIndexer.index([event])
 
         var reminderNote = ""
         if let reminder {
@@ -309,6 +332,10 @@ struct AskLaunchControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Ask About My Plan"
     static var description = IntentDescription("Ask a question about your events and progress, like what to tackle first or how your week is going.")
     static var openAppWhenRun = false
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Ask \(\.$question)")
+    }
 
     @Parameter(title: "Question", requestValueDialog: "What would you like to know? For example, what should I do first today?")
     var question: String
@@ -346,6 +373,7 @@ struct UndoLastActionIntent: AppIntent {
             event.removePendingNotification()
             context.delete(event)
             try context.save()
+            await EventSpotlightIndexer.remove(ids: [id])
             return .result(dialog: "Undone. I removed \"\(title)\".")
 
         case .completed(let id):
@@ -360,8 +388,10 @@ struct UndoLastActionIntent: AppIntent {
             guard try find(snapshot.eventID) == nil else {
                 return .result(dialog: "\"\(snapshot.title)\" is already back.")
             }
-            context.insert(snapshot.makeEvent())
+            let restored = snapshot.makeEvent()
+            context.insert(restored)
             try context.save()
+            await EventSpotlightIndexer.index([restored])
             if snapshot.hasReminder, let reminder = snapshot.reminderDate, reminder > Date() {
                 _ = await NotificationScheduler.scheduleNotification(
                     for: snapshot.eventID.uuidString, title: snapshot.title, reminderDate: reminder)
